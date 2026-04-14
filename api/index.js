@@ -314,28 +314,28 @@ export default async function handler(req) {
         try {
           sse(controller, 'status', { message: '正在抓取字幕...' });
 
-          const transcriptRes = await fetch(
-            `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
-            { headers: { 'x-api-key': process.env.SUPADATA_API_KEY } }
-          );
+          let transcript = '';
+          let transcriptFailed = false;
 
-          if (!transcriptRes.ok) {
-            const errText = await transcriptRes.text();
-            sse(controller, 'error', {
-              message: '字幕抓取失敗，請改用手動問卷',
-              detail: errText,
-              fallback: true,
-            });
-            controller.close();
-            return;
+          try {
+            const transcriptRes = await fetch(
+              `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
+              { headers: { 'x-api-key': process.env.SUPADATA_API_KEY } }
+            );
+
+            if (transcriptRes.ok) {
+              const transcriptData = await transcriptRes.json();
+              transcript = transcriptData.content || '';
+            }
+          } catch {
+            // Supadata request failed entirely
           }
 
-          const transcriptData = await transcriptRes.json();
-          const transcript = transcriptData.content || '';
-
           if (!transcript || transcript.length < 20) {
+            // No usable transcript — return error so frontend triggers manual form
             sse(controller, 'error', {
-              message: '找不到可用字幕，請改用手動問卷',
+              status: 'error',
+              message: 'TRANSCRIPT_NOT_FOUND',
               fallback: true,
             });
             controller.close();
@@ -390,16 +390,17 @@ Visual Inference: ${body.analysis.visual_inference || ''}
 
 Mirror the reference video's style and logic. Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.`;
           } else {
-            // Questionnaire fallback path
+            // Manual product entry path (no video reference)
             contextText = `Generate a 10/10/10 creative breakdown for this product ad.
+You have NO reference video. Use your internal knowledge of high-converting ads for this niche to create compelling blocks.
 
 Product Name: ${body.productName || 'Unknown'}
-Description: ${body.productDesc || 'N/A'}
-Main Benefit: ${body.mainBenefit || 'N/A'}
+Product Type: ${body.productType || 'N/A'}
+Core Benefit (the "Magic Moment"): ${body.coreBenefit || 'N/A'}
 Target Audience: ${body.targetAudience || '30-55 year olds'}
-Pain Points: ${body.painPoints || 'N/A'}
 
-Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.`;
+Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.
+Base your creative direction on proven high-converting ad patterns for the "${body.productType || 'general'}" category targeting ${body.targetAudience || '30-55 year olds'}.`;
           }
 
           await runStep2Menu(controller, contextText);

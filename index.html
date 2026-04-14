@@ -421,26 +421,31 @@
 
         <div class="or-divider">or skip video — fill in manually</div>
 
-        <button class="btn btn-outline btn-sm" onclick="toggleQuestionnaire()">Open Questionnaire</button>
+        <button class="btn btn-outline btn-sm" id="manualToggleBtn" onclick="toggleManualForm()">Open Manual Entry</button>
 
-        <!-- QUESTIONNAIRE FALLBACK -->
-        <div class="questionnaire" id="questionnaire">
+        <!-- MANUAL PRODUCT ENTRY FORM -->
+        <div class="questionnaire" id="manualForm">
           <div class="card" style="margin-top:1rem;">
-            <h3 style="font-size:1rem; margin-bottom:1rem;">Manual Input (No Video)</h3>
+            <h3 style="font-size:1rem; margin-bottom:0.4rem;">Manual Product Entry</h3>
+            <p style="color:var(--text2); font-size:0.8rem; margin-bottom:1.25rem;">No video needed — we'll generate ad blocks using knowledge of high-converting ads for your niche.</p>
             <div class="form-group">
-              <label>Main Benefit</label>
-              <input type="text" id="qBenefit" placeholder="e.g. 3秒升溫，膝蓋不再冷" />
+              <label>Product Name *</label>
+              <input type="text" id="mName" placeholder="e.g. 3ZeBra 石墨烯護膝" />
+            </div>
+            <div class="form-group">
+              <label>Product Type *</label>
+              <input type="text" id="mType" placeholder="e.g. 保暖護膝 / 健康護具" />
+            </div>
+            <div class="form-group">
+              <label>Core Benefit — the "Magic Moment" *</label>
+              <input type="text" id="mBenefit" placeholder="e.g. 3秒升溫，膝蓋整天暖呼呼" />
             </div>
             <div class="form-group">
               <label>Target Audience</label>
-              <input type="text" id="qAudience" placeholder="e.g. 40-60歲膝蓋容易痠痛的長輩" />
+              <input type="text" id="mAudience" placeholder="e.g. 40-60歲膝蓋容易痠痛的長輩" />
             </div>
-            <div class="form-group">
-              <label>Pain Points (comma-separated)</label>
-              <input type="text" id="qPains" placeholder="e.g. 冬天膝蓋冷, 走路卡卡, 傳統護膝太厚重" />
-            </div>
-            <div style="text-align:right; margin-top:1rem;">
-              <button class="btn btn-primary" onclick="startFromQuestionnaire()">Generate 10/10/10</button>
+            <div style="text-align:right; margin-top:1.25rem;">
+              <button class="btn btn-primary" id="manualGenBtn" onclick="startFromManual()">Generate 10/10/10</button>
             </div>
           </div>
         </div>
@@ -571,8 +576,8 @@
     return d.innerHTML;
   }
 
-  function toggleQuestionnaire() {
-    document.getElementById('questionnaire').classList.toggle('visible');
+  function toggleManualForm() {
+    document.getElementById('manualForm').classList.toggle('visible');
   }
 
   function showError(id, msg) {
@@ -598,12 +603,12 @@
       return;
     }
     if (!videoUrl) {
-      showError('errorMsg1', 'Please enter a YouTube URL, or use the questionnaire below.');
+      showError('errorMsg1', '請輸入 YouTube 網址，或使用下方手動輸入。');
       return;
     }
 
     hide('errorMsg1');
-    hide('questionnaire');
+    hide('manualForm');
     show('loader1');
     document.getElementById('loaderMsg1').textContent = '正在抓取字幕...';
     document.getElementById('analyzeBtn').disabled = true;
@@ -653,10 +658,19 @@
             renderAnalysis(payload);
             goPanel(2);
           } else if (eventType === 'error') {
-            showError('errorMsg1', payload.message);
-            if (payload.fallback) {
+            if (payload.message === 'TRANSCRIPT_NOT_FOUND' || payload.fallback) {
+              // Transcript unavailable — show manual product entry form
               hide('loader1');
-              show('questionnaire');
+              document.getElementById('analyzeBtn').disabled = false;
+              showError('errorMsg1', '找不到字幕 — 請使用下方手動輸入表單來產生廣告素材。');
+              show('manualForm');
+              // Pre-fill product name if already entered
+              const nameVal = document.getElementById('productName').value.trim();
+              if (nameVal && !document.getElementById('mName').value) {
+                document.getElementById('mName').value = nameVal;
+              }
+            } else {
+              showError('errorMsg1', payload.message);
             }
           }
         }
@@ -708,27 +722,31 @@
     }
   }
 
-  async function startFromQuestionnaire() {
-    const { name, desc } = getProduct();
-    if (!name || !desc) {
-      showError('errorMsg1', 'Please fill in product name and description at the top.');
+  async function startFromManual() {
+    const productName = document.getElementById('mName').value.trim();
+    const productType = document.getElementById('mType').value.trim();
+    const coreBenefit = document.getElementById('mBenefit').value.trim();
+    const targetAudience = document.getElementById('mAudience').value.trim();
+
+    if (!productName || !productType || !coreBenefit) {
+      showError('errorMsg1', '請填寫產品名稱、產品類型和核心賣點。');
       return;
     }
 
     hide('errorMsg1');
     show('loader1');
-    document.getElementById('loaderMsg1').textContent = '正在從問卷生成...';
+    document.getElementById('loaderMsg1').textContent = '正在從手動輸入生成 10/10/10...';
+    document.getElementById('manualGenBtn').disabled = true;
 
     try {
       const res = await fetch(`${API}?step=2`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productName: name,
-          productDesc: desc,
-          mainBenefit: document.getElementById('qBenefit').value.trim(),
-          targetAudience: document.getElementById('qAudience').value.trim(),
-          painPoints: document.getElementById('qPains').value.trim(),
+          productName: productName,
+          productType: productType,
+          coreBenefit: coreBenefit,
+          targetAudience: targetAudience,
         }),
       });
       await handleStep2SSE(res);
@@ -736,6 +754,7 @@
       showError('errorMsg1', err.message);
     } finally {
       hide('loader1');
+      document.getElementById('manualGenBtn').disabled = false;
     }
   }
 
