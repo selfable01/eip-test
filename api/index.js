@@ -19,34 +19,120 @@ function sse(controller, event, data) {
 }
 
 // ──────────────────────────────────────────────────────
-//  STAGE 1  –  Transcript → 10 Hooks / 10 Visuals / 10 CTAs
+//  STEP 1 — Context & Analysis (Reference Logic)
 // ──────────────────────────────────────────────────────
 
-const STAGE1_SYSTEM = `You are a world-class short-form video strategist.
-Your tone is conversational, natural, and realistic — like a sharp creative director talking to a friend.
+const STEP1_SYSTEM = `You are a world-class short-form video ad strategist and creative director.
+Your task is to analyze a reference video's transcript and infer its SUCCESS LOGIC — how it hooks, agitates pain, and showcases the product.
 
-SAFETY RULES (non-negotiable):
-- NEVER make medical, health, or scientific claims.
-- NEVER use medical jargon or clinical language.
-- NEVER promise specific results, cures, or outcomes.
-- Keep everything honest, grounded, and compliant.
+Since you only have the transcript (not the actual video), you must INFER the likely visual strategy from the rhythm, pacing, and content of the spoken words.
 
-Given product/video context, produce EXACTLY this JSON (no markdown, no fences):
+Return EXACTLY this JSON (no markdown fences):
 {
-  "hooks": ["... 10 scroll-stopping opening lines ..."],
-  "visuals": ["... 10 vivid scene descriptions (what the viewer sees on screen, 1-2 sentences each) ..."],
-  "ctas": ["... 10 natural, non-pushy calls to action ..."],
-  "context": "A 1-2 sentence summary of the product/content for downstream use."
+  "hook_analysis": "How does the video open? What pattern-interrupt or attention-grab technique is used in the first 2-3 seconds?",
+  "pain_analysis": "What pain points or problems does the video surface? How does it make the viewer feel the problem?",
+  "show_analysis": "How does the video present/demonstrate the product? What proof or transformation does it show?",
+  "flow_summary": "A 2-3 sentence summary of the overall ad flow: Hook → Pain → Show → CTA. What makes this video effective?",
+  "visual_inference": "Based on transcript rhythm, what camera work, settings, and visual transitions are likely used?"
 }
 
-Rules for each:
-- Hooks: The first 2-3 seconds. Pattern-interrupt style. Questions, bold statements, relatable moments. No clickbait lies.
-- Visuals: Describe camera angles, settings, actions, text overlays. Be specific and cinematic.
-- CTAs: Conversational closers. No "BUY NOW" energy. Think "link in bio" casual.
-- Every item must be distinct — no repetition.`;
+RULES:
+- Be specific and actionable, not generic.
+- Ground your analysis in what the transcript actually says.
+- Infer visuals from pacing cues (short sentences = quick cuts, long descriptions = slow pans, etc.)
+- Keep language warm, confident, and professional.`;
 
-async function runStage1(controller, contextText) {
-  sse(controller, 'status', { message: 'Generating 10/10/10 with Gemini...' });
+async function runStep1Analysis(controller, transcript, productName, productDesc) {
+  sse(controller, 'status', { message: '正在分析影片邏輯...' });
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: 'application/json',
+    },
+    systemInstruction: STEP1_SYSTEM,
+  });
+
+  const prompt = `Analyze this reference video transcript for ad creation purposes.
+
+PRODUCT: ${productName}
+PRODUCT DESCRIPTION: ${productDesc}
+
+TRANSCRIPT:
+${transcript}
+
+Provide a detailed analysis of the video's success logic (Hook, Pain, Show, Flow).`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    sse(controller, 'error', { message: 'Gemini returned invalid JSON for analysis', raw: text.slice(0, 400) });
+    return;
+  }
+
+  sse(controller, 'analysis', parsed);
+  sse(controller, 'done', { message: 'Analysis complete' });
+}
+
+// ──────────────────────────────────────────────────────
+//  STEP 2 — 10/10/10 Multimodal Menu
+// ──────────────────────────────────────────────────────
+
+const STEP2_SYSTEM = `You are a world-class short-form video ad strategist.
+Target audience: 30–55 year olds.
+Brand voice (3ZeBra): Warm, confident, benefit-first. Conversational and realistic.
+
+RESTRICTIONS:
+- NO false claims, NO clinical/medical jargon, NO Gen-Z slang.
+- Keep everything honest, grounded, and compliant.
+
+Generate EXACTLY 30 creative "Lego blocks" for a product ad, organized into 3 categories of 10 each.
+
+Return EXACTLY this JSON (no markdown fences):
+{
+  "hooks": [
+    {
+      "id": "H1",
+      "visual": "畫面內容: Camera angle, movement, and specific action described in detail.",
+      "voiceover": "口播內容: The exact opening line to be spoken.",
+      "text_overlay": "字卡設計: What text appears on screen."
+    }
+  ],
+  "pains": [
+    {
+      "id": "P1",
+      "visual": "畫面內容: Camera angle, movement, and specific action for the pain point scene.",
+      "voiceover": "口播內容: The exact spoken line that surfaces the pain.",
+      "text_overlay": "字卡設計: What text appears on screen."
+    }
+  ],
+  "shows": [
+    {
+      "id": "S1",
+      "visual": "畫面內容: Camera angle, movement, and specific action for the product display.",
+      "voiceover": "口播內容: The exact spoken line showcasing the product.",
+      "text_overlay": "字卡設計: What text appears on screen."
+    }
+  ]
+}
+
+RULES:
+- Each category MUST have exactly 10 items (H1-H10, P1-P10, S1-S10).
+- Each item MUST have all 3 fields: visual, voiceover, text_overlay.
+- "visual" describes camera angle, movement, setting, and specific on-screen action.
+- "voiceover" is the actual spoken line (conversational, natural, realistic).
+- "text_overlay" is what text/graphics appear on screen during this beat.
+- Every item must be DISTINCT — no repetition across items.
+- Mirror the reference video's style and logic when analysis is provided.
+- All content should be in the same language as the product description.`;
+
+async function runStep2Menu(controller, contextText) {
+  sse(controller, 'status', { message: '正在生成 10/10/10 創意選單...' });
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
@@ -54,7 +140,7 @@ async function runStage1(controller, contextText) {
       temperature: 0.9,
       responseMimeType: 'application/json',
     },
-    systemInstruction: STAGE1_SYSTEM,
+    systemInstruction: STEP2_SYSTEM,
   });
 
   const result = await model.generateContent(contextText);
@@ -64,14 +150,13 @@ async function runStage1(controller, contextText) {
   try {
     parsed = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini returned invalid JSON', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: 'Gemini returned invalid JSON for 10/10/10', raw: text.slice(0, 400) });
     return;
   }
 
-  // Validate arrays of 10
-  for (const key of ['hooks', 'visuals', 'ctas']) {
+  for (const key of ['hooks', 'pains', 'shows']) {
     if (!Array.isArray(parsed[key]) || parsed[key].length === 0) {
-      sse(controller, 'error', { message: `Missing or empty "${key}" in Gemini response` });
+      sse(controller, 'error', { message: `Missing or empty "${key}" in response` });
       return;
     }
   }
@@ -81,53 +166,76 @@ async function runStage1(controller, contextText) {
 }
 
 // ──────────────────────────────────────────────────────
-//  STAGE 2  –  Selections → Final Timed Storyboard
+//  STEP 3 — Final Assembly
 // ──────────────────────────────────────────────────────
 
-const STAGE2_SYSTEM = `You are a short-form video editor building a final production storyboard.
-Tone: conversational, natural, realistic. No hype, no false claims, no medical jargon.
+const STEP3_SYSTEM = `You are a short-form video ad editor assembling a final production script.
+Target audience: 30–55 year olds.
+Brand voice (3ZeBra): Warm, confident, benefit-first. Conversational and realistic.
 
-You will receive selected hooks, visuals, and CTAs. Weave them into a timed storyboard of 15-20 second intervals.
+RESTRICTIONS:
+- NO false claims, NO clinical/medical jargon, NO Gen-Z slang.
+- Total video length: STRICTLY 25–35 seconds.
+- Each beat should be 15–20 seconds interval.
 
-Return EXACTLY this JSON (no markdown, no fences):
+You will receive selected creative blocks (Hooks, Pain Points, Product Displays).
+Weave them into ONE cohesive, flowing ad script.
+
+Return EXACTLY this JSON (no markdown fences):
 {
-  "storyboard": [
+  "script": [
     {
-      "time": "0:00-0:15",
-      "visual": "Detailed description of what appears on screen during this interval.",
-      "voiceover": "The exact spoken script for this interval."
+      "time": "0:00–0:05",
+      "visual": "Detailed description of what appears on screen.",
+      "voiceover": "The exact spoken script.",
+      "text_overlay": "Text/graphics that appear on screen."
     }
-  ]
+  ],
+  "total_duration": "30 seconds"
 }
 
-CRITICAL RULES:
-- Each interval MUST be 15-20 seconds.
-- The storyboard should flow naturally as one cohesive video.
-- Open with the strongest hook as the first voiceover.
-- Close the final segment with the best CTA.
-- Visuals should be specific: camera angles, settings, transitions, text overlays.
-- Voiceover must sound like a real person talking — not an ad read.
-- Total video length: 45-90 seconds (3-6 intervals). Pick what fits the content best.
-- NEVER invent health claims or product promises that weren't in the source material.`;
+RULES:
+- The script must flow naturally as ONE cohesive video — not a collage of disconnected beats.
+- Open with the strongest hook.
+- Build tension with pain points in the middle.
+- Close with the best product display / CTA.
+- Visuals must be specific: camera angles, settings, transitions, text overlays.
+- Voiceover must sound like a real person talking — warm, confident, not an ad read.
+- Text overlays should reinforce key points without being redundant.
+- STRICTLY 25–35 seconds total.
+- All content should match the language of the selected blocks.`;
 
-async function runStage2(controller, body) {
-  sse(controller, 'status', { message: 'Building final storyboard...' });
+async function runStep3Assembly(controller, body) {
+  sse(controller, 'status', { message: '正在組裝最終腳本...' });
 
-  const prompt = `Here are the selected creative elements:
+  const selectedHooks = (body.hooks || []).map(h =>
+    `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`
+  ).join('\n');
+  const selectedPains = (body.pains || []).map(p =>
+    `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`
+  ).join('\n');
+  const selectedShows = (body.shows || []).map(s =>
+    `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`
+  ).join('\n');
 
-PRODUCT CONTEXT:
-${body.context || 'General product video'}
+  const prompt = `Assemble a final ad script from these selected creative blocks:
 
-SELECTED HOOKS:
-${(body.hooks || []).map((h, i) => `${i + 1}. ${h}`).join('\n')}
+PRODUCT: ${body.productName || 'Product'}
+DESCRIPTION: ${body.productDesc || ''}
 
-SELECTED VISUALS:
-${(body.visuals || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
+SELECTED HOOKS (影片鉤子):
+${selectedHooks || 'None selected'}
 
-SELECTED CTAs:
-${(body.ctas || []).map((c, i) => `${i + 1}. ${c}`).join('\n')}
+SELECTED PAIN POINTS (痛點分鏡):
+${selectedPains || 'None selected'}
 
-Now produce the timed storyboard. Use the best hook to open, the best CTA to close, and weave the visuals throughout.`;
+SELECTED PRODUCT DISPLAYS (展示分鏡):
+${selectedShows || 'None selected'}
+
+REFERENCE ANALYSIS:
+${body.analysisContext || 'No reference analysis available'}
+
+Create a cohesive 25-35 second ad script. Use the best hook to open, pain points for tension, and product displays to close.`;
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
@@ -135,7 +243,7 @@ Now produce the timed storyboard. Use the best hook to open, the best CTA to clo
       temperature: 0.7,
       responseMimeType: 'application/json',
     },
-    systemInstruction: STAGE2_SYSTEM,
+    systemInstruction: STEP3_SYSTEM,
   });
 
   const result = await model.generateContent(prompt);
@@ -145,17 +253,17 @@ Now produce the timed storyboard. Use the best hook to open, the best CTA to clo
   try {
     parsed = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini returned invalid JSON for storyboard', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: 'Gemini returned invalid JSON for final script', raw: text.slice(0, 400) });
     return;
   }
 
-  if (!Array.isArray(parsed.storyboard) || parsed.storyboard.length === 0) {
-    sse(controller, 'error', { message: 'Empty storyboard returned' });
+  if (!Array.isArray(parsed.script) || parsed.script.length === 0) {
+    sse(controller, 'error', { message: 'Empty script returned' });
     return;
   }
 
   sse(controller, 'result', parsed);
-  sse(controller, 'done', { message: 'Storyboard complete' });
+  sse(controller, 'done', { message: 'Script assembly complete' });
 }
 
 // ──────────────────────────────────────────────────────
@@ -163,7 +271,6 @@ Now produce the timed storyboard. Use the best hook to open, the best CTA to clo
 // ──────────────────────────────────────────────────────
 
 export default async function handler(req) {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -176,8 +283,7 @@ export default async function handler(req) {
   }
 
   const url = new URL(req.url);
-  const stage = url.searchParams.get('stage');
-  const isFallback = url.searchParams.get('fallback') === 'true';
+  const step = url.searchParams.get('step');
 
   const sseHeaders = {
     'Content-Type': 'text/event-stream',
@@ -186,28 +292,27 @@ export default async function handler(req) {
     'Access-Control-Allow-Origin': '*',
   };
 
-  // ── STAGE 1: YouTube URL ──
-  if (stage === '1' && !isFallback) {
+  const corsJson = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+
+  // ── STEP 1: Analyze reference video ──
+  if (step === '1') {
     const videoUrl = url.searchParams.get('url');
+    const productName = url.searchParams.get('product') || '';
+    const productDesc = url.searchParams.get('desc') || '';
+
     if (!videoUrl) {
-      return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), { status: 400, headers: corsJson });
     }
 
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
-      return new Response(JSON.stringify({ error: 'Invalid YouTube URL' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return new Response(JSON.stringify({ error: 'Invalid YouTube URL' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          sse(controller, 'status', { message: 'Fetching transcript via Supadata...' });
+          sse(controller, 'status', { message: '正在抓取字幕...' });
 
           const transcriptRes = await fetch(
             `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
@@ -217,7 +322,7 @@ export default async function handler(req) {
           if (!transcriptRes.ok) {
             const errText = await transcriptRes.text();
             sse(controller, 'error', {
-              message: `Transcript fetch failed — use the questionnaire instead.`,
+              message: '字幕抓取失敗，請改用手動問卷',
               detail: errText,
               fallback: true,
             });
@@ -230,17 +335,17 @@ export default async function handler(req) {
 
           if (!transcript || transcript.length < 20) {
             sse(controller, 'error', {
-              message: 'No usable transcript found — use the questionnaire instead.',
+              message: '找不到可用字幕，請改用手動問卷',
               fallback: true,
             });
             controller.close();
             return;
           }
 
-          sse(controller, 'status', { message: `Got transcript (${transcript.length} chars)` });
+          sse(controller, 'status', { message: `取得字幕 (${transcript.length} 字元)，開始分析...` });
+          sse(controller, 'transcript', { content: transcript });
 
-          const contextText = `Analyze this YouTube video transcript and generate the 10/10/10 creative breakdown:\n\n${transcript}`;
-          await runStage1(controller, contextText);
+          await runStep1Analysis(controller, transcript, productName, productDesc);
         } catch (err) {
           sse(controller, 'error', { message: err.message || 'Unexpected error' });
         } finally {
@@ -252,30 +357,52 @@ export default async function handler(req) {
     return new Response(stream, { headers: sseHeaders });
   }
 
-  // ── STAGE 1: QUESTIONNAIRE FALLBACK ──
-  if (stage === '1' && isFallback) {
+  // ── STEP 2: Generate 10/10/10 menu ──
+  if (step === '2') {
     let body;
     try {
       body = await req.json();
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const contextText = `Generate a 10/10/10 creative breakdown for this product:
+          let contextText;
 
-Product Name: ${body.name || 'Unknown'}
-Description: ${body.what || 'N/A'}
-Target Audience: ${body.audience || 'General'}
-Key Benefits: ${body.benefits || 'N/A'}
-Tone: ${body.tone || 'Conversational, natural'}`;
+          if (body.transcript && body.analysis) {
+            // From video analysis path
+            contextText = `Generate a 10/10/10 creative breakdown for this product ad.
 
-          await runStage1(controller, contextText);
+PRODUCT: ${body.productName || 'Unknown'}
+DESCRIPTION: ${body.productDesc || 'N/A'}
+
+REFERENCE VIDEO TRANSCRIPT:
+${body.transcript}
+
+REFERENCE LOGIC ANALYSIS:
+Hook Strategy: ${body.analysis.hook_analysis || ''}
+Pain Strategy: ${body.analysis.pain_analysis || ''}
+Show Strategy: ${body.analysis.show_analysis || ''}
+Flow: ${body.analysis.flow_summary || ''}
+Visual Inference: ${body.analysis.visual_inference || ''}
+
+Mirror the reference video's style and logic. Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.`;
+          } else {
+            // Questionnaire fallback path
+            contextText = `Generate a 10/10/10 creative breakdown for this product ad.
+
+Product Name: ${body.productName || 'Unknown'}
+Description: ${body.productDesc || 'N/A'}
+Main Benefit: ${body.mainBenefit || 'N/A'}
+Target Audience: ${body.targetAudience || '30-55 year olds'}
+Pain Points: ${body.painPoints || 'N/A'}
+
+Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.`;
+          }
+
+          await runStep2Menu(controller, contextText);
         } catch (err) {
           sse(controller, 'error', { message: err.message || 'Unexpected error' });
         } finally {
@@ -287,22 +414,19 @@ Tone: ${body.tone || 'Conversational, natural'}`;
     return new Response(stream, { headers: sseHeaders });
   }
 
-  // ── STAGE 2: BUILD FINAL TABLE ──
-  if (stage === '2') {
+  // ── STEP 3: Final assembly ──
+  if (step === '3') {
     let body;
     try {
       body = await req.json();
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          await runStage2(controller, body);
+          await runStep3Assembly(controller, body);
         } catch (err) {
           sse(controller, 'error', { message: err.message || 'Unexpected error' });
         } finally {
@@ -314,9 +438,8 @@ Tone: ${body.tone || 'Conversational, natural'}`;
     return new Response(stream, { headers: sseHeaders });
   }
 
-  // ── UNKNOWN STAGE ──
-  return new Response(JSON.stringify({ error: 'Unknown stage. Use ?stage=1 or ?stage=2' }), {
+  return new Response(JSON.stringify({ error: 'Unknown step. Use ?step=1, ?step=2, or ?step=3' }), {
     status: 400,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: corsJson,
   });
 }

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3ZeBra — Timed Context Engine</title>
+  <title>3ZeBra — Ad Factory</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,6 +19,7 @@
       --accent2: #a78bfa;
       --green: #22c55e;
       --red: #f43f5e;
+      --orange: #f59e0b;
       --radius: 12px;
     }
 
@@ -39,11 +40,7 @@
       border-bottom: 1px solid var(--border);
       background: var(--surface);
     }
-    .logo {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
+    .logo { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px; }
     .logo span { color: var(--accent); }
     .header-tag {
       font-size: 0.7rem;
@@ -81,65 +78,56 @@
     }
     .step-item.active .step-num { border-color: var(--accent); background: var(--accent); color: #fff; }
     .step-item.done .step-num { border-color: var(--green); background: var(--green); color: #fff; }
-    .step-line {
-      width: 60px; height: 1px;
-      background: var(--border);
-      margin: 0 0.75rem;
-    }
+    .step-line { width: 50px; height: 1px; background: var(--border); margin: 0 0.6rem; }
     .step-line.done { background: var(--green); }
 
     /* ---- MAIN ---- */
-    .main { max-width: 960px; margin: 0 auto; padding: 2rem; }
+    .main { max-width: 1000px; margin: 0 auto; padding: 2rem; }
 
     /* ---- PANELS ---- */
-    .panel {
-      display: none;
-      animation: fadeUp 0.4s ease;
-    }
+    .panel { display: none; animation: fadeUp 0.4s ease; }
     .panel.visible { display: block; }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ---- STEP 1: URL INPUT ---- */
-    .input-card {
+    /* ---- CARD ---- */
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 2.5rem;
-      text-align: center;
+      padding: 2rem;
     }
-    .input-card h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-    .input-card p {
+
+    /* ---- INPUTS ---- */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
       color: var(--text2);
-      font-size: 0.85rem;
-      margin-bottom: 1.75rem;
+      margin-bottom: 0.35rem;
+      font-weight: 500;
     }
-    .url-row {
-      display: flex;
-      gap: 0.75rem;
-      max-width: 560px;
-      margin: 0 auto;
-    }
-    .url-row input {
-      flex: 1;
+    .form-group input, .form-group textarea {
+      width: 100%;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.75rem 1rem;
+      padding: 0.7rem 0.9rem;
       color: var(--text);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       outline: none;
+      font-family: inherit;
       transition: border 0.2s;
     }
-    .url-row input:focus { border-color: var(--accent); }
-    .url-row input::placeholder { color: var(--text2); }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text2); }
+    .form-group textarea { resize: vertical; min-height: 60px; }
 
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ---- BUTTONS ---- */
     .btn {
       padding: 0.75rem 1.5rem;
       border: none;
@@ -149,26 +137,19 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
+    .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: #6a4ae0; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-outline {
-      background: transparent;
-      color: var(--accent2);
-      border: 1px solid var(--border);
-    }
+    .btn-outline { background: transparent; color: var(--accent2); border: 1px solid var(--border); }
     .btn-outline:hover { border-color: var(--accent); }
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.78rem; }
 
     /* ---- OR DIVIDER ---- */
     .or-divider {
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin: 1.5rem auto;
-      max-width: 560px;
+      margin: 1.5rem 0;
       color: var(--text2);
       font-size: 0.75rem;
       text-transform: uppercase;
@@ -181,49 +162,8 @@
       background: var(--border);
     }
 
-    /* ---- QUESTIONNAIRE ---- */
-    .questionnaire {
-      display: none;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 2rem;
-      margin-top: 1rem;
-      text-align: left;
-    }
-    .questionnaire.visible { display: block; }
-    .questionnaire h3 {
-      font-size: 1.1rem;
-      margin-bottom: 1.25rem;
-    }
-    .q-field { margin-bottom: 1rem; }
-    .q-field label {
-      display: block;
-      font-size: 0.8rem;
-      color: var(--text2);
-      margin-bottom: 0.35rem;
-    }
-    .q-field input, .q-field textarea {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.65rem 0.85rem;
-      color: var(--text);
-      font-size: 0.85rem;
-      outline: none;
-      font-family: inherit;
-    }
-    .q-field textarea { resize: vertical; min-height: 70px; }
-    .q-field input:focus, .q-field textarea:focus { border-color: var(--accent); }
-    .q-actions { margin-top: 1.25rem; text-align: right; }
-
     /* ---- LOADING ---- */
-    .loader-wrap {
-      display: none;
-      text-align: center;
-      padding: 3rem 0;
-    }
+    .loader-wrap { display: none; text-align: center; padding: 2.5rem 0; }
     .loader-wrap.visible { display: block; }
     .spinner {
       width: 36px; height: 36px;
@@ -236,17 +176,47 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader-wrap p { color: var(--text2); font-size: 0.85rem; }
 
-    /* ---- STEP 2: 10/10/10 GRID ---- */
-    .section-title {
-      font-size: 1.15rem;
+    /* ---- ANALYSIS CARD ---- */
+    .analysis-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin-top: 1.5rem;
+    }
+    .analysis-card h3 {
+      font-size: 1.1rem;
       font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-    .section-sub {
-      font-size: 0.8rem;
-      color: var(--text2);
       margin-bottom: 1.25rem;
+      color: var(--accent2);
     }
+    .analysis-item {
+      margin-bottom: 1.25rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .analysis-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .analysis-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--orange);
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+    .analysis-text {
+      font-size: 0.88rem;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    /* ---- QUESTIONNAIRE ---- */
+    .questionnaire { display: none; margin-top: 1rem; }
+    .questionnaire.visible { display: block; }
+
+    /* ---- STEP 3: 10/10/10 GRID ---- */
+    .section-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .section-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 1.25rem; }
     .grid-block { margin-bottom: 2.5rem; }
     .grid-block h3 {
       font-size: 0.85rem;
@@ -257,22 +227,21 @@
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--border);
     }
-    .option-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .option-list { display: flex; flex-direction: column; gap: 0.6rem; }
     .option-card {
       display: flex;
       align-items: flex-start;
       gap: 0.75rem;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
       cursor: pointer;
       transition: all 0.2s;
       user-select: none;
     }
     .option-card:hover { border-color: var(--border-hl); background: var(--surface2); }
     .option-card.selected { border-color: var(--accent); background: rgba(124,92,252,0.06); }
-    .option-card input[type="checkbox"] { display: none; }
     .check-box {
       flex-shrink: 0;
       width: 20px; height: 20px;
@@ -280,12 +249,9 @@
       border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
       transition: all 0.2s;
-      margin-top: 1px;
+      margin-top: 2px;
     }
-    .option-card.selected .check-box {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
+    .option-card.selected .check-box { background: var(--accent); border-color: var(--accent); }
     .check-box::after {
       content: '';
       width: 10px; height: 6px;
@@ -296,10 +262,25 @@
       transition: opacity 0.15s;
     }
     .option-card.selected .check-box::after { opacity: 1; }
-    .option-text {
-      font-size: 0.85rem;
+    .option-content { flex: 1; }
+    .option-id {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.4rem;
+    }
+    .option-field {
+      font-size: 0.82rem;
       line-height: 1.5;
-      flex: 1;
+      margin-bottom: 0.3rem;
+    }
+    .option-field strong {
+      color: var(--text2);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .generate-bar {
@@ -316,7 +297,7 @@
     .sel-count { font-size: 0.8rem; color: var(--text2); }
     .sel-count strong { color: var(--accent2); }
 
-    /* ---- STEP 3: FINAL TABLE ---- */
+    /* ---- STEP 4: FINAL TABLE ---- */
     .final-header {
       display: flex;
       align-items: center;
@@ -334,7 +315,7 @@
     }
     .final-table th {
       background: var(--surface2);
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--text2);
@@ -354,24 +335,19 @@
       font-weight: 600;
       color: var(--accent2);
       white-space: nowrap;
-      width: 100px;
+      width: 90px;
     }
-    .copy-all-btn {
-      margin-top: 1rem;
-      width: 100%;
-    }
-
-    /* ---- STATUS BAR ---- */
-    .status-bar {
-      display: none;
-      margin-top: 0.75rem;
-      padding: 0.65rem 1rem;
-      background: var(--surface2);
-      border-radius: 8px;
+    .duration-badge {
+      display: inline-block;
+      background: rgba(124,92,252,0.12);
+      color: var(--accent2);
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
       font-size: 0.78rem;
-      color: var(--text2);
+      font-weight: 600;
+      margin-bottom: 1rem;
     }
-    .status-bar.visible { display: block; }
+    .copy-all-btn { margin-top: 1rem; width: 100%; }
 
     /* ---- ERROR ---- */
     .error-msg {
@@ -388,11 +364,13 @@
 
     @media (max-width: 640px) {
       .main { padding: 1rem; }
-      .input-card { padding: 1.5rem; }
-      .url-row { flex-direction: column; }
-      .step-line { width: 30px; }
+      .card { padding: 1.5rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .step-line { width: 24px; }
+      .step-item { font-size: 0.7rem; }
       .generate-bar { flex-direction: column; gap: 0.75rem; }
       .final-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+      .final-table { font-size: 0.78rem; }
     }
   </style>
 </head>
@@ -401,128 +379,150 @@
   <!-- HEADER -->
   <div class="header">
     <div class="logo">3<span>Ze</span>Bra</div>
-    <div class="header-tag">Timed Context Engine v2</div>
+    <div class="header-tag">Ad Factory</div>
   </div>
 
   <!-- STEPPER -->
   <div class="stepper">
-    <div class="step-item active" id="s1">
-      <div class="step-num">1</div> Analyze
-    </div>
+    <div class="step-item active" id="s1"><div class="step-num">1</div> Input</div>
     <div class="step-line" id="line1"></div>
-    <div class="step-item" id="s2">
-      <div class="step-num">2</div> Select
-    </div>
+    <div class="step-item" id="s2"><div class="step-num">2</div> Analysis</div>
     <div class="step-line" id="line2"></div>
-    <div class="step-item" id="s3">
-      <div class="step-num">3</div> Final Table
-    </div>
+    <div class="step-item" id="s3"><div class="step-num">3</div> Select</div>
+    <div class="step-line" id="line3"></div>
+    <div class="step-item" id="s4"><div class="step-num">4</div> Script</div>
   </div>
 
   <div class="main">
 
-    <!-- ======== STEP 1 ======== -->
+    <!-- ======== PANEL 1: INPUT ======== -->
     <div class="panel visible" id="panel1">
-      <div class="input-card">
-        <h2>Paste a YouTube Link</h2>
-        <p>We'll pull the transcript and generate 10 Hooks, 10 Visuals, and 10 CTAs.</p>
-        <div class="url-row">
-          <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." />
-          <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()">Analyze</button>
+      <div class="card">
+        <h2 style="font-size:1.4rem; margin-bottom:0.4rem;">Create Your Ad</h2>
+        <p style="color:var(--text2); font-size:0.85rem; margin-bottom:1.75rem;">Enter your product info and a reference YouTube video. We'll analyze the video's success logic and generate tailored ad blocks.</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Product / Brand Name *</label>
+            <input type="text" id="productName" placeholder="e.g. 3ZeBra 護膝" />
+          </div>
+          <div class="form-group">
+            <label>YouTube Reference URL</label>
+            <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
+          </div>
         </div>
-        <div class="or-divider">or fill in manually</div>
-        <button class="btn btn-outline" onclick="toggleQuestionnaire()">Open Questionnaire</button>
+        <div class="form-group">
+          <label>Product Description *</label>
+          <textarea id="productDesc" placeholder="e.g. 專利石墨烯發熱護膝，3秒升溫、持續8小時，適合長輩膝蓋保暖"></textarea>
+        </div>
+        <div style="text-align:right;">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="startStep1()">Analyze Reference</button>
+        </div>
+
+        <div class="or-divider">or skip video — fill in manually</div>
+
+        <button class="btn btn-outline btn-sm" onclick="toggleQuestionnaire()">Open Questionnaire</button>
+
+        <!-- QUESTIONNAIRE FALLBACK -->
+        <div class="questionnaire" id="questionnaire">
+          <div class="card" style="margin-top:1rem;">
+            <h3 style="font-size:1rem; margin-bottom:1rem;">Manual Input (No Video)</h3>
+            <div class="form-group">
+              <label>Main Benefit</label>
+              <input type="text" id="qBenefit" placeholder="e.g. 3秒升溫，膝蓋不再冷" />
+            </div>
+            <div class="form-group">
+              <label>Target Audience</label>
+              <input type="text" id="qAudience" placeholder="e.g. 40-60歲膝蓋容易痠痛的長輩" />
+            </div>
+            <div class="form-group">
+              <label>Pain Points (comma-separated)</label>
+              <input type="text" id="qPains" placeholder="e.g. 冬天膝蓋冷, 走路卡卡, 傳統護膝太厚重" />
+            </div>
+            <div style="text-align:right; margin-top:1rem;">
+              <button class="btn btn-primary" onclick="startFromQuestionnaire()">Generate 10/10/10</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- QUESTIONNAIRE FALLBACK -->
-      <div class="questionnaire" id="questionnaire">
-        <h3>Tell us about the product</h3>
-        <div class="q-field">
-          <label>Product / Brand Name</label>
-          <input type="text" id="qName" placeholder="e.g. GlowSerum Pro" />
-        </div>
-        <div class="q-field">
-          <label>What does it do? (1-2 sentences)</label>
-          <textarea id="qWhat" placeholder="e.g. A vitamin C serum that brightens skin in 14 days"></textarea>
-        </div>
-        <div class="q-field">
-          <label>Target Audience</label>
-          <input type="text" id="qAudience" placeholder="e.g. Women 25-40 interested in skincare" />
-        </div>
-        <div class="q-field">
-          <label>Key Benefits (comma-separated)</label>
-          <input type="text" id="qBenefits" placeholder="e.g. brightening, hydration, anti-aging" />
-        </div>
-        <div class="q-field">
-          <label>Tone / Vibe</label>
-          <input type="text" id="qTone" placeholder="e.g. friendly, confident, casual" />
-        </div>
-        <div class="q-actions">
-          <button class="btn btn-primary" onclick="startFromQuestionnaire()">Generate 10/10/10</button>
-        </div>
-      </div>
-
-      <!-- LOADING -->
       <div class="loader-wrap" id="loader1">
         <div class="spinner"></div>
-        <p id="loaderMsg">Fetching transcript...</p>
+        <p id="loaderMsg1">Fetching transcript...</p>
       </div>
-
-      <div class="status-bar" id="statusBar"></div>
-      <div class="error-msg" id="errorMsg"></div>
+      <div class="error-msg" id="errorMsg1"></div>
     </div>
 
-    <!-- ======== STEP 2 ======== -->
+    <!-- ======== PANEL 2: ANALYSIS ======== -->
     <div class="panel" id="panel2">
-      <h2 class="section-title">Your 10 / 10 / 10</h2>
-      <p class="section-sub">Pick your favorites from each category, then generate the final storyboard.</p>
+      <div class="analysis-card" id="analysisDisplay">
+        <h3>Reference Logic Analysis</h3>
+        <div id="analysisContent"></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
+        <button class="btn btn-outline" onclick="goPanel(1)">Back</button>
+        <button class="btn btn-primary" id="generate1010Btn" onclick="startStep2FromAnalysis()">Generate 10/10/10 Menu</button>
+      </div>
+      <div class="loader-wrap" id="loader2">
+        <div class="spinner"></div>
+        <p id="loaderMsg2">Generating creative blocks...</p>
+      </div>
+    </div>
+
+    <!-- ======== PANEL 3: SELECT ======== -->
+    <div class="panel" id="panel3">
+      <h2 class="section-title">10 / 10 / 10 Multimodal Menu</h2>
+      <p class="section-sub">Pick your favorites from each category, then assemble the final script.</p>
 
       <div class="grid-block">
-        <h3>Hooks (pick your best)</h3>
+        <h3>Hooks — 影片鉤子 (pick your best)</h3>
         <div class="option-list" id="hooksList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>Visuals (pick your best)</h3>
-        <div class="option-list" id="visualsList"></div>
+        <h3>Pain Points — 痛點分鏡 (pick your best)</h3>
+        <div class="option-list" id="painsList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>CTAs (pick your best)</h3>
-        <div class="option-list" id="ctasList"></div>
+        <h3>Product Display — 展示分鏡 (pick your best)</h3>
+        <div class="option-list" id="showsList"></div>
       </div>
 
       <div class="generate-bar">
         <div class="sel-count">
-          Selected: <strong id="selHooks">0</strong> hooks,
-          <strong id="selVisuals">0</strong> visuals,
-          <strong id="selCtas">0</strong> CTAs
+          Selected: <strong id="selH">0</strong> hooks,
+          <strong id="selP">0</strong> pains,
+          <strong id="selS">0</strong> shows
         </div>
-        <button class="btn btn-primary" id="generateBtn" onclick="generateFinal()">Build Final Table</button>
+        <button class="btn btn-primary" id="assembleBtn" onclick="startStep3()">Assemble Final Script</button>
       </div>
 
-      <div class="loader-wrap" id="loader2">
+      <div class="loader-wrap" id="loader3">
         <div class="spinner"></div>
-        <p>Building your storyboard...</p>
+        <p>Assembling your ad script...</p>
       </div>
     </div>
 
-    <!-- ======== STEP 3 ======== -->
-    <div class="panel" id="panel3">
+    <!-- ======== PANEL 4: FINAL SCRIPT ======== -->
+    <div class="panel" id="panel4">
       <div class="final-header">
         <div>
-          <h2 class="section-title">Final Storyboard</h2>
+          <h2 class="section-title">Final Ad Script</h2>
           <p class="section-sub">Your production-ready timed breakdown.</p>
         </div>
         <button class="btn btn-outline" onclick="goToStart()">Start Over</button>
       </div>
 
+      <div id="durationBadge" class="duration-badge" style="display:none;"></div>
+
       <table class="final-table" id="finalTable">
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Visual</th>
-            <th>Voiceover / Script</th>
+            <th>時間 Time</th>
+            <th>畫面內容 Visual</th>
+            <th>口播內容 Audio</th>
+            <th>字卡 Text</th>
           </tr>
         </thead>
         <tbody id="finalBody"></tbody>
@@ -535,87 +535,97 @@
 
 <script>
   const API = '/api';
-  let data1010 = null;
-  let selections = { hooks: new Set(), visuals: new Set(), ctas: new Set() };
+
+  // State
+  let transcript = '';
+  let analysisData = null;
+  let menuData = null;
+  let selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
 
   // ---- HELPERS ----
   function show(id)  { document.getElementById(id).classList.add('visible'); }
   function hide(id)  { document.getElementById(id).classList.remove('visible'); }
+
   function setStep(n) {
-    ['s1','s2','s3'].forEach((s, i) => {
-      const el = document.getElementById(s);
-      el.classList.remove('active','done');
-      if (i < n - 1) el.classList.add('done');
-      else if (i === n - 1) el.classList.add('active');
-    });
-    ['line1','line2'].forEach((l, i) => {
-      document.getElementById(l).classList.toggle('done', i < n - 1);
-    });
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('s' + i);
+      el.classList.remove('active', 'done');
+      if (i < n) el.classList.add('done');
+      else if (i === n) el.classList.add('active');
+    }
+    for (let i = 1; i <= 3; i++) {
+      document.getElementById('line' + i).classList.toggle('done', i < n);
+    }
   }
+
   function goPanel(n) {
-    ['panel1','panel2','panel3'].forEach(p => hide(p));
+    for (let i = 1; i <= 4; i++) hide('panel' + i);
     show('panel' + n);
     setStep(n);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function toggleQuestionnaire() {
-    const q = document.getElementById('questionnaire');
-    q.classList.toggle('visible');
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
   }
 
-  // ---- STEP 1: ANALYZE ----
-  async function startAnalysis() {
-    const url = document.getElementById('urlInput').value.trim();
-    if (!url) return;
-    hide('errorMsg');
+  function toggleQuestionnaire() {
+    document.getElementById('questionnaire').classList.toggle('visible');
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    show(id);
+  }
+
+  function getProduct() {
+    return {
+      name: document.getElementById('productName').value.trim(),
+      desc: document.getElementById('productDesc').value.trim(),
+    };
+  }
+
+  // ── STEP 1: Analyze reference video ──
+  async function startStep1() {
+    const { name, desc } = getProduct();
+    const videoUrl = document.getElementById('videoUrl').value.trim();
+
+    if (!name || !desc) {
+      showError('errorMsg1', 'Please fill in product name and description.');
+      return;
+    }
+    if (!videoUrl) {
+      showError('errorMsg1', 'Please enter a YouTube URL, or use the questionnaire below.');
+      return;
+    }
+
+    hide('errorMsg1');
     hide('questionnaire');
     show('loader1');
-    document.getElementById('loaderMsg').textContent = 'Fetching transcript...';
+    document.getElementById('loaderMsg1').textContent = '正在抓取字幕...';
     document.getElementById('analyzeBtn').disabled = true;
 
     try {
-      const res = await fetch(`${API}?stage=1&url=${encodeURIComponent(url)}`);
-      await handleSSE(res);
+      const params = new URLSearchParams({
+        step: '1',
+        url: videoUrl,
+        product: name,
+        desc: desc,
+      });
+      const res = await fetch(`${API}?${params}`);
+      await handleStep1SSE(res);
     } catch (err) {
-      showError(err.message);
+      showError('errorMsg1', err.message);
     } finally {
       hide('loader1');
       document.getElementById('analyzeBtn').disabled = false;
     }
   }
 
-  async function startFromQuestionnaire() {
-    const body = {
-      name:     document.getElementById('qName').value.trim(),
-      what:     document.getElementById('qWhat').value.trim(),
-      audience: document.getElementById('qAudience').value.trim(),
-      benefits: document.getElementById('qBenefits').value.trim(),
-      tone:     document.getElementById('qTone').value.trim(),
-    };
-    if (!body.name || !body.what) {
-      showError('Please fill in at least the product name and description.');
-      return;
-    }
-    hide('errorMsg');
-    show('loader1');
-    document.getElementById('loaderMsg').textContent = 'Generating from questionnaire...';
-
-    try {
-      const res = await fetch(`${API}?stage=1&fallback=true`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      await handleSSE(res);
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      hide('loader1');
-    }
-  }
-
-  async function handleSSE(response) {
+  async function handleStep1SSE(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -635,14 +645,15 @@
         } else if (line.startsWith('data: ')) {
           const payload = JSON.parse(line.slice(6));
           if (eventType === 'status') {
-            document.getElementById('loaderMsg').textContent = payload.message || '';
-          } else if (eventType === 'result') {
-            data1010 = payload;
-            render1010(payload);
+            document.getElementById('loaderMsg1').textContent = payload.message || '';
+          } else if (eventType === 'transcript') {
+            transcript = payload.content || '';
+          } else if (eventType === 'analysis') {
+            analysisData = payload;
+            renderAnalysis(payload);
             goPanel(2);
           } else if (eventType === 'error') {
-            showError(payload.message);
-            // trigger questionnaire fallback on transcript failure
+            showError('errorMsg1', payload.message);
             if (payload.fallback) {
               hide('loader1');
               show('questionnaire');
@@ -653,29 +664,140 @@
     }
   }
 
-  function showError(msg) {
-    const el = document.getElementById('errorMsg');
-    el.textContent = msg;
-    show('errorMsg');
-    hide('loader1');
+  function renderAnalysis(data) {
+    const items = [
+      { label: 'Hook Strategy (鉤子策略)', text: data.hook_analysis },
+      { label: 'Pain Point Strategy (痛點策略)', text: data.pain_analysis },
+      { label: 'Product Show Strategy (展示策略)', text: data.show_analysis },
+      { label: 'Overall Flow (整體流程)', text: data.flow_summary },
+      { label: 'Visual Inference (視覺推斷)', text: data.visual_inference },
+    ];
+
+    const container = document.getElementById('analysisContent');
+    container.innerHTML = items.map(item => `
+      <div class="analysis-item">
+        <div class="analysis-label">${escHtml(item.label)}</div>
+        <div class="analysis-text">${escHtml(item.text || 'N/A')}</div>
+      </div>
+    `).join('');
   }
 
-  // ---- STEP 2: RENDER 10/10/10 ----
+  // ── STEP 2: Generate 10/10/10 (from analysis or questionnaire) ──
+  async function startStep2FromAnalysis() {
+    const { name, desc } = getProduct();
+    show('loader2');
+    document.getElementById('generate1010Btn').disabled = true;
+
+    try {
+      const res = await fetch(`${API}?step=2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: name,
+          productDesc: desc,
+          transcript: transcript,
+          analysis: analysisData,
+        }),
+      });
+      await handleStep2SSE(res);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      hide('loader2');
+      document.getElementById('generate1010Btn').disabled = false;
+    }
+  }
+
+  async function startFromQuestionnaire() {
+    const { name, desc } = getProduct();
+    if (!name || !desc) {
+      showError('errorMsg1', 'Please fill in product name and description at the top.');
+      return;
+    }
+
+    hide('errorMsg1');
+    show('loader1');
+    document.getElementById('loaderMsg1').textContent = '正在從問卷生成...';
+
+    try {
+      const res = await fetch(`${API}?step=2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: name,
+          productDesc: desc,
+          mainBenefit: document.getElementById('qBenefit').value.trim(),
+          targetAudience: document.getElementById('qAudience').value.trim(),
+          painPoints: document.getElementById('qPains').value.trim(),
+        }),
+      });
+      await handleStep2SSE(res);
+    } catch (err) {
+      showError('errorMsg1', err.message);
+    } finally {
+      hide('loader1');
+    }
+  }
+
+  async function handleStep2SSE(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const payload = JSON.parse(line.slice(6));
+          if (eventType === 'status') {
+            const msg1 = document.getElementById('loaderMsg1');
+            const msg2 = document.getElementById('loaderMsg2');
+            if (msg1) msg1.textContent = payload.message || '';
+            if (msg2) msg2.textContent = payload.message || '';
+          } else if (eventType === 'result') {
+            menuData = payload;
+            render1010(payload);
+            goPanel(3);
+          } else if (eventType === 'error') {
+            alert('Error: ' + payload.message);
+          }
+        }
+      }
+    }
+  }
+
+  // ── RENDER 10/10/10 ──
   function render1010(data) {
-    selections = { hooks: new Set(), visuals: new Set(), ctas: new Set() };
-    renderOptions('hooksList',   data.hooks   || [], 'hooks');
-    renderOptions('visualsList', data.visuals || [], 'visuals');
-    renderOptions('ctasList',    data.ctas    || [], 'ctas');
+    selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
+    renderOptionCards('hooksList', data.hooks || [], 'hooks');
+    renderOptionCards('painsList', data.pains || [], 'pains');
+    renderOptionCards('showsList', data.shows || [], 'shows');
     updateSelCount();
   }
 
-  function renderOptions(containerId, items, category) {
+  function renderOptionCards(containerId, items, category) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    items.forEach((text, i) => {
+    items.forEach((item, i) => {
       const card = document.createElement('div');
       card.className = 'option-card';
-      card.innerHTML = `<div class="check-box"></div><div class="option-text">${escHtml(text)}</div>`;
+      card.innerHTML = `
+        <div class="check-box"></div>
+        <div class="option-content">
+          <div class="option-id">${escHtml(item.id || (category[0].toUpperCase() + (i + 1)))}</div>
+          <div class="option-field"><strong>畫面 Visual: </strong>${escHtml(item.visual || '')}</div>
+          <div class="option-field"><strong>口播 Audio: </strong>${escHtml(item.voiceover || '')}</div>
+          <div class="option-field"><strong>字卡 Text: </strong>${escHtml(item.text_overlay || '')}</div>
+        </div>`;
       card.addEventListener('click', () => {
         card.classList.toggle('selected');
         if (selections[category].has(i)) selections[category].delete(i);
@@ -686,77 +808,90 @@
     });
   }
 
-  function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
   function updateSelCount() {
-    document.getElementById('selHooks').textContent   = selections.hooks.size;
-    document.getElementById('selVisuals').textContent  = selections.visuals.size;
-    document.getElementById('selCtas').textContent     = selections.ctas.size;
+    document.getElementById('selH').textContent = selections.hooks.size;
+    document.getElementById('selP').textContent = selections.pains.size;
+    document.getElementById('selS').textContent = selections.shows.size;
   }
 
-  // ---- STEP 2 -> 3: GENERATE FINAL ----
-  async function generateFinal() {
-    if (selections.hooks.size === 0 && selections.visuals.size === 0 && selections.ctas.size === 0) {
-      alert('Select at least one item from any category.');
+  // ── STEP 3: Final Assembly ──
+  async function startStep3() {
+    const totalSel = selections.hooks.size + selections.pains.size + selections.shows.size;
+    if (totalSel === 0) {
+      alert('Please select at least one item.');
       return;
     }
-    show('loader2');
-    document.getElementById('generateBtn').disabled = true;
 
+    show('loader3');
+    document.getElementById('assembleBtn').disabled = true;
+
+    const { name, desc } = getProduct();
     const picked = {
-      hooks:   [...selections.hooks].map(i => data1010.hooks[i]),
-      visuals: [...selections.visuals].map(i => data1010.visuals[i]),
-      ctas:    [...selections.ctas].map(i => data1010.ctas[i]),
-      context: data1010.context || '',
+      productName: name,
+      productDesc: desc,
+      hooks: [...selections.hooks].map(i => menuData.hooks[i]),
+      pains: [...selections.pains].map(i => menuData.pains[i]),
+      shows: [...selections.shows].map(i => menuData.shows[i]),
+      analysisContext: analysisData
+        ? `Hook: ${analysisData.hook_analysis}\nPain: ${analysisData.pain_analysis}\nShow: ${analysisData.show_analysis}\nFlow: ${analysisData.flow_summary}`
+        : '',
     };
 
     try {
-      const res = await fetch(`${API}?stage=2`, {
+      const res = await fetch(`${API}?step=3`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(picked),
       });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        let eventType = '';
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            const payload = JSON.parse(line.slice(6));
-            if (eventType === 'result') {
-              renderFinalTable(payload.storyboard || []);
-              goPanel(3);
-            } else if (eventType === 'error') {
-              alert('Error: ' + payload.message);
-            }
-          }
-        }
-      }
+      await handleStep3SSE(res);
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
-      hide('loader2');
-      document.getElementById('generateBtn').disabled = false;
+      hide('loader3');
+      document.getElementById('assembleBtn').disabled = false;
     }
   }
 
-  // ---- STEP 3: RENDER FINAL TABLE ----
-  function renderFinalTable(rows) {
+  async function handleStep3SSE(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const payload = JSON.parse(line.slice(6));
+          if (eventType === 'result') {
+            renderFinalTable(payload.script || [], payload.total_duration || '');
+            goPanel(4);
+          } else if (eventType === 'error') {
+            alert('Error: ' + payload.message);
+          }
+        }
+      }
+    }
+  }
+
+  // ── RENDER FINAL TABLE ──
+  function renderFinalTable(rows, duration) {
+    const badge = document.getElementById('durationBadge');
+    if (duration) {
+      badge.textContent = 'Total: ' + duration;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+
     const tbody = document.getElementById('finalBody');
     tbody.innerHTML = '';
     rows.forEach(row => {
@@ -764,7 +899,8 @@
       tr.innerHTML = `
         <td>${escHtml(row.time || '')}</td>
         <td>${escHtml(row.visual || '')}</td>
-        <td>${escHtml(row.voiceover || '')}</td>`;
+        <td>${escHtml(row.voiceover || '')}</td>
+        <td>${escHtml(row.text_overlay || '')}</td>`;
       tbody.appendChild(tr);
     });
   }
@@ -783,9 +919,13 @@
   }
 
   function goToStart() {
-    data1010 = null;
-    selections = { hooks: new Set(), visuals: new Set(), ctas: new Set() };
-    document.getElementById('urlInput').value = '';
+    transcript = '';
+    analysisData = null;
+    menuData = null;
+    selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
+    document.getElementById('productName').value = '';
+    document.getElementById('productDesc').value = '';
+    document.getElementById('videoUrl').value = '';
     goPanel(1);
   }
 </script>
