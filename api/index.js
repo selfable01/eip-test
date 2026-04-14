@@ -1,55 +1,16 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 export const config = { runtime: 'edge' };
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 function extractVideoId(url) {
   try {
     const u = new URL(url);
     if (u.hostname === 'youtu.be') return u.pathname.slice(1);
     if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-  } catch {
-    return null;
-  }
+  } catch { /* invalid url */ }
   return null;
-}
-
-function buildIntervals(totalSeconds) {
-  const intervals = [];
-  let start = 0;
-  while (start < totalSeconds) {
-    const remaining = totalSeconds - start;
-    let duration;
-    if (remaining <= 20) {
-      duration = remaining;
-    } else if (remaining < 35) {
-      duration = Math.ceil(remaining / 2);
-    } else {
-      duration = 15 + Math.floor(Math.random() * 6); // 15-20
-    }
-    const end = start + duration;
-    intervals.push({ start, end: Math.min(end, totalSeconds) });
-    start = Math.min(end, totalSeconds);
-  }
-  return intervals;
-}
-
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function assignTranscriptToIntervals(transcript, intervals) {
-  const lines = Array.isArray(transcript) ? transcript : [];
-  return intervals.map(({ start, end }) => {
-    const matched = lines.filter(
-      (l) => l.offset != null && l.offset / 1000 >= start && l.offset / 1000 < end
-    );
-    return {
-      time: `${formatTime(start)}-${formatTime(end)}`,
-      startSec: start,
-      endSec: end,
-      voiceover: matched.map((l) => l.text).join(' ').trim() || '[no dialogue in this segment]',
-    };
-  });
 }
 
 function sse(controller, event, data) {
@@ -57,7 +18,152 @@ function sse(controller, event, data) {
   controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 }
 
+// ──────────────────────────────────────────────────────
+//  STAGE 1  –  Transcript → 10 Hooks / 10 Visuals / 10 CTAs
+// ──────────────────────────────────────────────────────
+
+const STAGE1_SYSTEM = `You are a world-class short-form video strategist.
+Your tone is conversational, natural, and realistic — like a sharp creative director talking to a friend.
+
+SAFETY RULES (non-negotiable):
+- NEVER make medical, health, or scientific claims.
+- NEVER use medical jargon or clinical language.
+- NEVER promise specific results, cures, or outcomes.
+- Keep everything honest, grounded, and compliant.
+
+Given product/video context, produce EXACTLY this JSON (no markdown, no fences):
+{
+  "hooks": ["... 10 scroll-stopping opening lines ..."],
+  "visuals": ["... 10 vivid scene descriptions (what the viewer sees on screen, 1-2 sentences each) ..."],
+  "ctas": ["... 10 natural, non-pushy calls to action ..."],
+  "context": "A 1-2 sentence summary of the product/content for downstream use."
+}
+
+Rules for each:
+- Hooks: The first 2-3 seconds. Pattern-interrupt style. Questions, bold statements, relatable moments. No clickbait lies.
+- Visuals: Describe camera angles, settings, actions, text overlays. Be specific and cinematic.
+- CTAs: Conversational closers. No "BUY NOW" energy. Think "link in bio" casual.
+- Every item must be distinct — no repetition.`;
+
+async function runStage1(controller, contextText) {
+  sse(controller, 'status', { message: 'Generating 10/10/10 with Gemini...' });
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.9,
+      responseMimeType: 'application/json',
+    },
+    systemInstruction: STAGE1_SYSTEM,
+  });
+
+  const result = await model.generateContent(contextText);
+  const text = result.response.text();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    sse(controller, 'error', { message: 'Gemini returned invalid JSON', raw: text.slice(0, 400) });
+    return;
+  }
+
+  // Validate arrays of 10
+  for (const key of ['hooks', 'visuals', 'ctas']) {
+    if (!Array.isArray(parsed[key]) || parsed[key].length === 0) {
+      sse(controller, 'error', { message: `Missing or empty "${key}" in Gemini response` });
+      return;
+    }
+  }
+
+  sse(controller, 'result', parsed);
+  sse(controller, 'done', { message: '10/10/10 complete' });
+}
+
+// ──────────────────────────────────────────────────────
+//  STAGE 2  –  Selections → Final Timed Storyboard
+// ──────────────────────────────────────────────────────
+
+const STAGE2_SYSTEM = `You are a short-form video editor building a final production storyboard.
+Tone: conversational, natural, realistic. No hype, no false claims, no medical jargon.
+
+You will receive selected hooks, visuals, and CTAs. Weave them into a timed storyboard of 15-20 second intervals.
+
+Return EXACTLY this JSON (no markdown, no fences):
+{
+  "storyboard": [
+    {
+      "time": "0:00-0:15",
+      "visual": "Detailed description of what appears on screen during this interval.",
+      "voiceover": "The exact spoken script for this interval."
+    }
+  ]
+}
+
+CRITICAL RULES:
+- Each interval MUST be 15-20 seconds.
+- The storyboard should flow naturally as one cohesive video.
+- Open with the strongest hook as the first voiceover.
+- Close the final segment with the best CTA.
+- Visuals should be specific: camera angles, settings, transitions, text overlays.
+- Voiceover must sound like a real person talking — not an ad read.
+- Total video length: 45-90 seconds (3-6 intervals). Pick what fits the content best.
+- NEVER invent health claims or product promises that weren't in the source material.`;
+
+async function runStage2(controller, body) {
+  sse(controller, 'status', { message: 'Building final storyboard...' });
+
+  const prompt = `Here are the selected creative elements:
+
+PRODUCT CONTEXT:
+${body.context || 'General product video'}
+
+SELECTED HOOKS:
+${(body.hooks || []).map((h, i) => `${i + 1}. ${h}`).join('\n')}
+
+SELECTED VISUALS:
+${(body.visuals || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
+
+SELECTED CTAs:
+${(body.ctas || []).map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+Now produce the timed storyboard. Use the best hook to open, the best CTA to close, and weave the visuals throughout.`;
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: 'application/json',
+    },
+    systemInstruction: STAGE2_SYSTEM,
+  });
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    sse(controller, 'error', { message: 'Gemini returned invalid JSON for storyboard', raw: text.slice(0, 400) });
+    return;
+  }
+
+  if (!Array.isArray(parsed.storyboard) || parsed.storyboard.length === 0) {
+    sse(controller, 'error', { message: 'Empty storyboard returned' });
+    return;
+  }
+
+  sse(controller, 'result', parsed);
+  sse(controller, 'done', { message: 'Storyboard complete' });
+}
+
+// ──────────────────────────────────────────────────────
+//  HANDLER
+// ──────────────────────────────────────────────────────
+
 export default async function handler(req) {
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -70,162 +176,147 @@ export default async function handler(req) {
   }
 
   const url = new URL(req.url);
-  const videoUrl = url.searchParams.get('url');
-  if (!videoUrl) {
-    return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
+  const stage = url.searchParams.get('stage');
+  const isFallback = url.searchParams.get('fallback') === 'true';
 
-  const videoId = extractVideoId(videoUrl);
-  if (!videoId) {
-    return new Response(JSON.stringify({ error: 'Invalid YouTube URL' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
+  const sseHeaders = {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  };
 
-  const SUPADATA_API_KEY = process.env.SUPADATA_API_KEY;
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  // ── STAGE 1: YouTube URL ──
+  if (stage === '1' && !isFallback) {
+    const videoUrl = url.searchParams.get('url');
+    if (!videoUrl) {
+      return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // --- Step 1: Fetch transcript from Supadata ---
-        sse(controller, 'status', { step: 'transcript', message: 'Fetching transcript via Supadata...' });
+    const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      return new Response(JSON.stringify({ error: 'Invalid YouTube URL' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
-        const transcriptRes = await fetch(
-          `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=false`,
-          { headers: { 'x-api-key': SUPADATA_API_KEY } }
-        );
-
-        if (!transcriptRes.ok) {
-          const err = await transcriptRes.text();
-          sse(controller, 'error', { message: `Supadata error: ${err}` });
-          controller.close();
-          return;
-        }
-
-        const transcriptData = await transcriptRes.json();
-        const lines = transcriptData.content || transcriptData || [];
-
-        if (!Array.isArray(lines) || lines.length === 0) {
-          sse(controller, 'error', { message: 'No transcript data returned' });
-          controller.close();
-          return;
-        }
-
-        sse(controller, 'status', { step: 'transcript_done', message: `Got ${lines.length} transcript segments` });
-
-        // --- Step 2: Calculate total duration and build 15-20s intervals ---
-        const lastLine = lines[lines.length - 1];
-        const totalMs = (lastLine.offset || 0) + (lastLine.dur || 3000);
-        const totalSeconds = Math.ceil(totalMs / 1000);
-        const intervals = buildIntervals(totalSeconds);
-        const segments = assignTranscriptToIntervals(lines, intervals);
-
-        sse(controller, 'status', {
-          step: 'intervals',
-          message: `Built ${segments.length} intervals across ${formatTime(totalSeconds)}`,
-          intervals: segments.map((s) => s.time),
-        });
-
-        // --- Step 3: Send to Gemini 2.5 Flash for visual inference ---
-        sse(controller, 'status', { step: 'gemini', message: 'Sending to Gemini 2.5 Flash for visual & copy generation...' });
-
-        const segmentBlock = segments
-          .map(
-            (s, i) =>
-              `Segment ${i + 1} [${s.time}]:\nVoiceover: "${s.voiceover}"`
-          )
-          .join('\n\n');
-
-        const geminiPrompt = `You are a viral video strategist and storyboard director.
-
-Given a YouTube transcript broken into timed segments, produce a JSON object with:
-
-1. "viral_logic": A short paragraph explaining why this content has viral potential and the psychological hooks at play.
-2. "product_copy": A punchy 1-2 sentence marketing tagline for the video.
-3. "storyboard": An array where each element corresponds to one of the segments below. Each element must have:
-   - "time": The exact timestamp range provided.
-   - "visual": A detailed, vivid description (2-3 sentences) of what should appear on screen — camera angles, graphics, text overlays, transitions, b-roll ideas. Be specific and cinematic.
-   - "voiceover": The exact transcript text provided for that segment.
-
-CRITICAL RULES:
-- The storyboard array MUST have exactly ${segments.length} elements, one per segment.
-- Each element's "time" field MUST match the timestamp range given.
-- Do NOT merge, split, or skip any segments.
-- Output ONLY valid JSON, no markdown fences, no explanation outside the JSON.
-
-Here are the ${segments.length} segments:
-
-${segmentBlock}`;
-
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: geminiPrompt }] }],
-              generationConfig: {
-                temperature: 0.7,
-                responseMimeType: 'application/json',
-              },
-            }),
-          }
-        );
-
-        if (!geminiRes.ok) {
-          const err = await geminiRes.text();
-          sse(controller, 'error', { message: `Gemini error: ${err}` });
-          controller.close();
-          return;
-        }
-
-        const geminiData = await geminiRes.json();
-
-        const rawText =
-          geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        sse(controller, 'status', { step: 'parsing', message: 'Parsing Gemini response...' });
-
-        let result;
+    const stream = new ReadableStream({
+      async start(controller) {
         try {
-          result = JSON.parse(rawText);
-        } catch {
-          sse(controller, 'error', { message: 'Failed to parse Gemini JSON output', raw: rawText.slice(0, 500) });
+          sse(controller, 'status', { message: 'Fetching transcript via Supadata...' });
+
+          const transcriptRes = await fetch(
+            `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
+            { headers: { 'x-api-key': process.env.SUPADATA_API_KEY } }
+          );
+
+          if (!transcriptRes.ok) {
+            const errText = await transcriptRes.text();
+            sse(controller, 'error', {
+              message: `Transcript fetch failed — use the questionnaire instead.`,
+              detail: errText,
+              fallback: true,
+            });
+            controller.close();
+            return;
+          }
+
+          const transcriptData = await transcriptRes.json();
+          const transcript = transcriptData.content || '';
+
+          if (!transcript || transcript.length < 20) {
+            sse(controller, 'error', {
+              message: 'No usable transcript found — use the questionnaire instead.',
+              fallback: true,
+            });
+            controller.close();
+            return;
+          }
+
+          sse(controller, 'status', { message: `Got transcript (${transcript.length} chars)` });
+
+          const contextText = `Analyze this YouTube video transcript and generate the 10/10/10 creative breakdown:\n\n${transcript}`;
+          await runStage1(controller, contextText);
+        } catch (err) {
+          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+        } finally {
           controller.close();
-          return;
         }
+      },
+    });
 
-        // --- Step 4: Validate storyboard intervals ---
-        if (result.storyboard && Array.isArray(result.storyboard)) {
-          result.storyboard = result.storyboard.map((item, i) => ({
-            ...item,
-            time: segments[i]?.time || item.time,
-            voiceover: segments[i]?.voiceover || item.voiceover,
-          }));
+    return new Response(stream, { headers: sseHeaders });
+  }
+
+  // ── STAGE 1: QUESTIONNAIRE FALLBACK ──
+  if (stage === '1' && isFallback) {
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const contextText = `Generate a 10/10/10 creative breakdown for this product:
+
+Product Name: ${body.name || 'Unknown'}
+Description: ${body.what || 'N/A'}
+Target Audience: ${body.audience || 'General'}
+Key Benefits: ${body.benefits || 'N/A'}
+Tone: ${body.tone || 'Conversational, natural'}`;
+
+          await runStage1(controller, contextText);
+        } catch (err) {
+          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+        } finally {
+          controller.close();
         }
+      },
+    });
 
-        // --- Step 5: Stream final result ---
-        sse(controller, 'result', result);
-        sse(controller, 'done', { message: 'Storyboard generation complete' });
-      } catch (err) {
-        sse(controller, 'error', { message: err.message || 'Unexpected error' });
-      } finally {
-        controller.close();
-      }
-    },
-  });
+    return new Response(stream, { headers: sseHeaders });
+  }
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    },
+  // ── STAGE 2: BUILD FINAL TABLE ──
+  if (stage === '2') {
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          await runStage2(controller, body);
+        } catch (err) {
+          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, { headers: sseHeaders });
+  }
+
+  // ── UNKNOWN STAGE ──
+  return new Response(JSON.stringify({ error: 'Unknown stage. Use ?stage=1 or ?stage=2' }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
   });
 }
