@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3ZeBra — Ad Factory</title>
+  <title>3ZeBra — 廣告工廠</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -379,18 +379,18 @@
   <!-- HEADER -->
   <div class="header">
     <div class="logo">3<span>Ze</span>Bra</div>
-    <div class="header-tag">Ad Factory</div>
+    <div class="header-tag">廣告工廠</div>
   </div>
 
   <!-- STEPPER -->
   <div class="stepper">
-    <div class="step-item active" id="s1"><div class="step-num">1</div> Input</div>
+    <div class="step-item active" id="s1"><div class="step-num">1</div> 輸入</div>
     <div class="step-line" id="line1"></div>
-    <div class="step-item" id="s2"><div class="step-num">2</div> Analysis</div>
+    <div class="step-item" id="s2"><div class="step-num">2</div> 分析</div>
     <div class="step-line" id="line2"></div>
-    <div class="step-item" id="s3"><div class="step-num">3</div> Select</div>
+    <div class="step-item" id="s3"><div class="step-num">3</div> 選擇</div>
     <div class="step-line" id="line3"></div>
-    <div class="step-item" id="s4"><div class="step-num">4</div> Script</div>
+    <div class="step-item" id="s4"><div class="step-num">4</div> 腳本</div>
   </div>
 
   <div class="main">
@@ -398,54 +398,54 @@
     <!-- ======== PANEL 1: INPUT ======== -->
     <div class="panel visible" id="panel1">
       <div class="card">
-        <h2 style="font-size:1.4rem; margin-bottom:0.4rem;">Create Your Ad</h2>
-        <p style="color:var(--text2); font-size:0.85rem; margin-bottom:1.75rem;">Enter your product info and a reference YouTube video. We'll analyze the video's success logic and generate tailored ad blocks.</p>
+        <h2 style="font-size:1.4rem; margin-bottom:0.4rem;">建立你的廣告</h2>
+        <p style="color:var(--text2); font-size:0.85rem; margin-bottom:1.75rem;">輸入產品資訊和參考 YouTube 影片，我們會分析影片的成功邏輯，為你量身打造廣告素材。</p>
 
         <div class="form-row">
           <div class="form-group">
-            <label>Product / Brand Name *</label>
-            <input type="text" id="productName" placeholder="e.g. 3ZeBra 護膝" />
+            <label>產品 / 品牌名稱 *</label>
+            <input type="text" id="productName" placeholder="例如：3ZeBra 護膝" />
           </div>
           <div class="form-group">
-            <label>YouTube Reference URL</label>
+            <label>YouTube 參考影片網址</label>
             <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
           </div>
         </div>
         <div class="form-group">
-          <label>Product Description *</label>
-          <textarea id="productDesc" placeholder="e.g. 專利石墨烯發熱護膝，3秒升溫、持續8小時，適合長輩膝蓋保暖"></textarea>
+          <label>產品描述 *</label>
+          <textarea id="productDesc" placeholder="例如：專利石墨烯發熱護膝，3秒升溫、持續8小時，適合長輩膝蓋保暖"></textarea>
         </div>
         <div style="text-align:right;">
-          <button class="btn btn-primary" id="analyzeBtn" onclick="startStep1()">Analyze Reference</button>
+          <button class="btn btn-primary" id="analyzeBtn" onclick="startStep1()">分析參考影片</button>
         </div>
 
-        <div class="or-divider">or skip video — fill in manually</div>
+        <div class="or-divider">或跳過影片 — 手動輸入</div>
 
-        <button class="btn btn-outline btn-sm" id="manualToggleBtn" onclick="toggleManualForm()">Open Manual Entry</button>
+        <button class="btn btn-outline btn-sm" id="manualToggleBtn" onclick="toggleManualForm()">開啟手動輸入</button>
 
         <!-- MANUAL PRODUCT ENTRY FORM -->
         <div class="questionnaire" id="manualForm">
           <div class="card" style="margin-top:1rem;">
-            <h3 style="font-size:1rem; margin-bottom:0.4rem;">Manual Product Entry</h3>
-            <p style="color:var(--text2); font-size:0.8rem; margin-bottom:1.25rem;">No video needed — we'll generate ad blocks using knowledge of high-converting ads for your niche.</p>
+            <h3 style="font-size:1rem; margin-bottom:0.4rem;">手動產品輸入</h3>
+            <p style="color:var(--text2); font-size:0.8rem; margin-bottom:1.25rem;">不需要影片 — 我們會根據高轉換率廣告的知識為你生成廣告素材。</p>
             <div class="form-group">
-              <label>Product Name *</label>
-              <input type="text" id="mName" placeholder="e.g. 3ZeBra 石墨烯護膝" />
+              <label>產品名稱 *</label>
+              <input type="text" id="mName" placeholder="例如：3ZeBra 石墨烯護膝" />
             </div>
             <div class="form-group">
-              <label>Product Type *</label>
-              <input type="text" id="mType" placeholder="e.g. 保暖護膝 / 健康護具" />
+              <label>產品類型 *</label>
+              <input type="text" id="mType" placeholder="例如：保暖護膝 / 健康護具" />
             </div>
             <div class="form-group">
-              <label>Core Benefit — the "Magic Moment" *</label>
-              <input type="text" id="mBenefit" placeholder="e.g. 3秒升溫，膝蓋整天暖呼呼" />
+              <label>核心賣點 — 「Magic Moment」 *</label>
+              <input type="text" id="mBenefit" placeholder="例如：3秒升溫，膝蓋整天暖呼呼" />
             </div>
             <div class="form-group">
-              <label>Target Audience</label>
-              <input type="text" id="mAudience" placeholder="e.g. 40-60歲膝蓋容易痠痛的長輩" />
+              <label>目標受眾</label>
+              <input type="text" id="mAudience" placeholder="例如：40-60歲膝蓋容易痠痛的長輩" />
             </div>
             <div style="text-align:right; margin-top:1.25rem;">
-              <button class="btn btn-primary" id="manualGenBtn" onclick="startFromManual()">Generate 10/10/10</button>
+              <button class="btn btn-primary" id="manualGenBtn" onclick="startFromManual()">生成 10/10/10</button>
             </div>
           </div>
         </div>
@@ -453,7 +453,7 @@
 
       <div class="loader-wrap" id="loader1">
         <div class="spinner"></div>
-        <p id="loaderMsg1">Fetching transcript...</p>
+        <p id="loaderMsg1">正在抓取字幕...</p>
       </div>
       <div class="error-msg" id="errorMsg1"></div>
     </div>
@@ -461,51 +461,51 @@
     <!-- ======== PANEL 2: ANALYSIS ======== -->
     <div class="panel" id="panel2">
       <div class="analysis-card" id="analysisDisplay">
-        <h3>Reference Logic Analysis</h3>
+        <h3>參考邏輯分析</h3>
         <div id="analysisContent"></div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
-        <button class="btn btn-outline" onclick="goPanel(1)">Back</button>
-        <button class="btn btn-primary" id="generate1010Btn" onclick="startStep2FromAnalysis()">Generate 10/10/10 Menu</button>
+        <button class="btn btn-outline" onclick="goPanel(1)">返回</button>
+        <button class="btn btn-primary" id="generate1010Btn" onclick="startStep2FromAnalysis()">生成 10/10/10 選單</button>
       </div>
       <div class="loader-wrap" id="loader2">
         <div class="spinner"></div>
-        <p id="loaderMsg2">Generating creative blocks...</p>
+        <p id="loaderMsg2">正在生成創意素材...</p>
       </div>
     </div>
 
     <!-- ======== PANEL 3: SELECT ======== -->
     <div class="panel" id="panel3">
-      <h2 class="section-title">10 / 10 / 10 Multimodal Menu</h2>
-      <p class="section-sub">Pick your favorites from each category, then assemble the final script.</p>
+      <h2 class="section-title">10 / 10 / 10 多模態選單</h2>
+      <p class="section-sub">從每個類別中選出你最喜歡的，然後組裝最終腳本。</p>
 
       <div class="grid-block">
-        <h3>Hooks — 影片鉤子 (pick your best)</h3>
+        <h3>影片鉤子（選出最佳）</h3>
         <div class="option-list" id="hooksList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>Pain Points — 痛點分鏡 (pick your best)</h3>
+        <h3>痛點分鏡（選出最佳）</h3>
         <div class="option-list" id="painsList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>Product Display — 展示分鏡 (pick your best)</h3>
+        <h3>展示分鏡（選出最佳）</h3>
         <div class="option-list" id="showsList"></div>
       </div>
 
       <div class="generate-bar">
         <div class="sel-count">
-          Selected: <strong id="selH">0</strong> hooks,
-          <strong id="selP">0</strong> pains,
-          <strong id="selS">0</strong> shows
+          已選：<strong id="selH">0</strong> 鉤子、
+          <strong id="selP">0</strong> 痛點、
+          <strong id="selS">0</strong> 展示
         </div>
-        <button class="btn btn-primary" id="assembleBtn" onclick="startStep3()">Assemble Final Script</button>
+        <button class="btn btn-primary" id="assembleBtn" onclick="startStep3()">組裝最終腳本</button>
       </div>
 
       <div class="loader-wrap" id="loader3">
         <div class="spinner"></div>
-        <p>Assembling your ad script...</p>
+        <p>正在組裝廣告腳本...</p>
       </div>
     </div>
 
@@ -513,10 +513,10 @@
     <div class="panel" id="panel4">
       <div class="final-header">
         <div>
-          <h2 class="section-title">Final Ad Script</h2>
-          <p class="section-sub">Your production-ready timed breakdown.</p>
+          <h2 class="section-title">最終廣告腳本</h2>
+          <p class="section-sub">可直接投入製作的時間軸分解。</p>
         </div>
-        <button class="btn btn-outline" onclick="goToStart()">Start Over</button>
+        <button class="btn btn-outline" onclick="goToStart()">重新開始</button>
       </div>
 
       <div id="durationBadge" class="duration-badge" style="display:none;"></div>
@@ -524,16 +524,16 @@
       <table class="final-table" id="finalTable">
         <thead>
           <tr>
-            <th>時間 Time</th>
-            <th>畫面內容 Visual</th>
-            <th>口播內容 Audio</th>
-            <th>字卡 Text</th>
+            <th>時間</th>
+            <th>畫面內容</th>
+            <th>口播內容</th>
+            <th>字卡</th>
           </tr>
         </thead>
         <tbody id="finalBody"></tbody>
       </table>
 
-      <button class="btn btn-primary copy-all-btn" onclick="copyTable()">Copy Table to Clipboard</button>
+      <button class="btn btn-primary copy-all-btn" onclick="copyTable()">複製表格到剪貼簿</button>
     </div>
 
   </div>
@@ -599,7 +599,7 @@
     const videoUrl = document.getElementById('videoUrl').value.trim();
 
     if (!name || !desc) {
-      showError('errorMsg1', 'Please fill in product name and description.');
+      showError('errorMsg1', '請填寫產品名稱和產品描述。');
       return;
     }
     if (!videoUrl) {
@@ -659,12 +659,12 @@
             goPanel(2);
           } else if (eventType === 'error') {
             if (payload.message === 'TRANSCRIPT_NOT_FOUND' || payload.fallback) {
-              // Transcript unavailable — show manual product entry form
+              // 字幕不可用 — 顯示手動輸入表單
               hide('loader1');
               document.getElementById('analyzeBtn').disabled = false;
               showError('errorMsg1', '找不到字幕 — 請使用下方手動輸入表單來產生廣告素材。');
               show('manualForm');
-              // Pre-fill product name if already entered
+              // 自動帶入已填寫的產品名稱
               const nameVal = document.getElementById('productName').value.trim();
               if (nameVal && !document.getElementById('mName').value) {
                 document.getElementById('mName').value = nameVal;
@@ -680,11 +680,11 @@
 
   function renderAnalysis(data) {
     const items = [
-      { label: 'Hook Strategy (鉤子策略)', text: data.hook_analysis },
-      { label: 'Pain Point Strategy (痛點策略)', text: data.pain_analysis },
-      { label: 'Product Show Strategy (展示策略)', text: data.show_analysis },
-      { label: 'Overall Flow (整體流程)', text: data.flow_summary },
-      { label: 'Visual Inference (視覺推斷)', text: data.visual_inference },
+      { label: '鉤子策略', text: data.hook_analysis },
+      { label: '痛點策略', text: data.pain_analysis },
+      { label: '展示策略', text: data.show_analysis },
+      { label: '整體流程', text: data.flow_summary },
+      { label: '視覺推斷', text: data.visual_inference },
     ];
 
     const container = document.getElementById('analysisContent');
@@ -715,7 +715,7 @@
       });
       await handleStep2SSE(res);
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert('錯誤：' + err.message);
     } finally {
       hide('loader2');
       document.getElementById('generate1010Btn').disabled = false;
@@ -787,7 +787,7 @@
             render1010(payload);
             goPanel(3);
           } else if (eventType === 'error') {
-            alert('Error: ' + payload.message);
+            alert('錯誤：' + payload.message);
           }
         }
       }
@@ -813,9 +813,9 @@
         <div class="check-box"></div>
         <div class="option-content">
           <div class="option-id">${escHtml(item.id || (category[0].toUpperCase() + (i + 1)))}</div>
-          <div class="option-field"><strong>畫面 Visual: </strong>${escHtml(item.visual || '')}</div>
-          <div class="option-field"><strong>口播 Audio: </strong>${escHtml(item.voiceover || '')}</div>
-          <div class="option-field"><strong>字卡 Text: </strong>${escHtml(item.text_overlay || '')}</div>
+          <div class="option-field"><strong>畫面內容：</strong>${escHtml(item.visual || '')}</div>
+          <div class="option-field"><strong>口播內容：</strong>${escHtml(item.voiceover || '')}</div>
+          <div class="option-field"><strong>字卡設計：</strong>${escHtml(item.text_overlay || '')}</div>
         </div>`;
       card.addEventListener('click', () => {
         card.classList.toggle('selected');
@@ -837,7 +837,7 @@
   async function startStep3() {
     const totalSel = selections.hooks.size + selections.pains.size + selections.shows.size;
     if (totalSel === 0) {
-      alert('Please select at least one item.');
+      alert('請至少選擇一個項目。');
       return;
     }
 
@@ -852,7 +852,7 @@
       pains: [...selections.pains].map(i => menuData.pains[i]),
       shows: [...selections.shows].map(i => menuData.shows[i]),
       analysisContext: analysisData
-        ? `Hook: ${analysisData.hook_analysis}\nPain: ${analysisData.pain_analysis}\nShow: ${analysisData.show_analysis}\nFlow: ${analysisData.flow_summary}`
+        ? `鉤子策略：${analysisData.hook_analysis}\n痛點策略：${analysisData.pain_analysis}\n展示策略：${analysisData.show_analysis}\n整體流程：${analysisData.flow_summary}`
         : '',
     };
 
@@ -864,7 +864,7 @@
       });
       await handleStep3SSE(res);
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert('錯誤：' + err.message);
     } finally {
       hide('loader3');
       document.getElementById('assembleBtn').disabled = false;
@@ -894,7 +894,7 @@
             renderFinalTable(payload.script || [], payload.total_duration || '');
             goPanel(4);
           } else if (eventType === 'error') {
-            alert('Error: ' + payload.message);
+            alert('錯誤：' + payload.message);
           }
         }
       }
@@ -905,7 +905,7 @@
   function renderFinalTable(rows, duration) {
     const badge = document.getElementById('durationBadge');
     if (duration) {
-      badge.textContent = 'Total: ' + duration;
+      badge.textContent = '總長度：' + duration;
       badge.style.display = 'inline-block';
     } else {
       badge.style.display = 'none';
@@ -932,8 +932,8 @@
     ).join('\n');
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.querySelector('.copy-all-btn');
-      btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = 'Copy Table to Clipboard', 1500);
+      btn.textContent = '已複製！';
+      setTimeout(() => btn.textContent = '複製表格到剪貼簿', 1500);
     });
   }
 

@@ -22,25 +22,26 @@ function sse(controller, event, data) {
 //  STEP 1 — Context & Analysis (Reference Logic)
 // ──────────────────────────────────────────────────────
 
-const STEP1_SYSTEM = `You are a world-class short-form video ad strategist and creative director.
-Your task is to analyze a reference video's transcript and infer its SUCCESS LOGIC — how it hooks, agitates pain, and showcases the product.
+const STEP1_SYSTEM = `你是一位世界級的短影片廣告策略師與創意總監。
+你的任務是分析參考影片的字幕，推斷其成功邏輯 — 如何吸引注意力（Hook）、激發痛點（Pain）、展示產品（Show）。
 
-Since you only have the transcript (not the actual video), you must INFER the likely visual strategy from the rhythm, pacing, and content of the spoken words.
+因為你只有字幕（沒有實際影片），你必須從語言節奏、語速、內容來推斷可能的視覺策略。
 
-Return EXACTLY this JSON (no markdown fences):
+請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
-  "hook_analysis": "How does the video open? What pattern-interrupt or attention-grab technique is used in the first 2-3 seconds?",
-  "pain_analysis": "What pain points or problems does the video surface? How does it make the viewer feel the problem?",
-  "show_analysis": "How does the video present/demonstrate the product? What proof or transformation does it show?",
-  "flow_summary": "A 2-3 sentence summary of the overall ad flow: Hook → Pain → Show → CTA. What makes this video effective?",
-  "visual_inference": "Based on transcript rhythm, what camera work, settings, and visual transitions are likely used?"
+  "hook_analysis": "影片如何開場？前 2-3 秒使用了什麼吸引注意力的技巧？",
+  "pain_analysis": "影片揭露了哪些痛點或問題？如何讓觀眾感受到問題的嚴重性？",
+  "show_analysis": "影片如何呈現/展示產品？展示了什麼證據或轉變？",
+  "flow_summary": "用 2-3 句話總結整體廣告流程：Hook → 痛點 → 展示 → CTA。這支影片為什麼有效？",
+  "visual_inference": "根據字幕節奏，推斷可能使用了什麼鏡頭運動、場景設定和視覺轉場？"
 }
 
-RULES:
-- Be specific and actionable, not generic.
-- Ground your analysis in what the transcript actually says.
-- Infer visuals from pacing cues (short sentences = quick cuts, long descriptions = slow pans, etc.)
-- Keep language warm, confident, and professional.`;
+規則：
+- 回答必須使用繁體中文。
+- 具體且可執行，不要泛泛而談。
+- 根據字幕的實際內容進行分析。
+- 從語速線索推斷視覺（短句 = 快速剪接，長描述 = 慢鏡頭等）。
+- 語氣溫暖、有自信、專業。`;
 
 async function runStep1Analysis(controller, transcript, productName, productDesc) {
   sse(controller, 'status', { message: '正在分析影片邏輯...' });
@@ -54,15 +55,15 @@ async function runStep1Analysis(controller, transcript, productName, productDesc
     systemInstruction: STEP1_SYSTEM,
   });
 
-  const prompt = `Analyze this reference video transcript for ad creation purposes.
+  const prompt = `請分析以下參考影片字幕，用於廣告創作。
 
-PRODUCT: ${productName}
-PRODUCT DESCRIPTION: ${productDesc}
+產品名稱：${productName}
+產品描述：${productDesc}
 
-TRANSCRIPT:
+字幕內容（可能為英文，但請用繁體中文回答）：
 ${transcript}
 
-Provide a detailed analysis of the video's success logic (Hook, Pain, Show, Flow).`;
+請詳細分析影片的成功邏輯（Hook、痛點、展示、整體流程）。所有回答必須使用繁體中文。`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
@@ -71,65 +72,65 @@ Provide a detailed analysis of the video's success logic (Hook, Pain, Show, Flow
   try {
     parsed = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini returned invalid JSON for analysis', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: 'Gemini 回傳的 JSON 格式無效', raw: text.slice(0, 400) });
     return;
   }
 
   sse(controller, 'analysis', parsed);
-  sse(controller, 'done', { message: 'Analysis complete' });
+  sse(controller, 'done', { message: '分析完成' });
 }
 
 // ──────────────────────────────────────────────────────
 //  STEP 2 — 10/10/10 Multimodal Menu
 // ──────────────────────────────────────────────────────
 
-const STEP2_SYSTEM = `You are a world-class short-form video ad strategist.
-Target audience: 30–55 year olds.
-Brand voice (3ZeBra): Warm, confident, benefit-first. Conversational and realistic.
+const STEP2_SYSTEM = `你是一位世界級的短影片廣告策略師。
+目標受眾：30–55 歲。
+品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
 
-RESTRICTIONS:
-- NO false claims, NO clinical/medical jargon, NO Gen-Z slang.
-- Keep everything honest, grounded, and compliant.
+限制：
+- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
+- 保持誠實、務實、合規。
 
-Generate EXACTLY 30 creative "Lego blocks" for a product ad, organized into 3 categories of 10 each.
+請生成恰好 30 個創意「積木」，分為 3 個類別，每類 10 個。
 
-Return EXACTLY this JSON (no markdown fences):
+請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
   "hooks": [
     {
       "id": "H1",
-      "visual": "畫面內容: Camera angle, movement, and specific action described in detail.",
-      "voiceover": "口播內容: The exact opening line to be spoken.",
-      "text_overlay": "字卡設計: What text appears on screen."
+      "visual": "畫面內容：詳細描述鏡頭角度、運動方式和具體動作。",
+      "voiceover": "口播內容：實際要說的開場台詞。",
+      "text_overlay": "字卡設計：螢幕上顯示的文字。"
     }
   ],
   "pains": [
     {
       "id": "P1",
-      "visual": "畫面內容: Camera angle, movement, and specific action for the pain point scene.",
-      "voiceover": "口播內容: The exact spoken line that surfaces the pain.",
-      "text_overlay": "字卡設計: What text appears on screen."
+      "visual": "畫面內容：痛點場景的鏡頭角度、運動方式和具體動作。",
+      "voiceover": "口播內容：揭露痛點的實際台詞。",
+      "text_overlay": "字卡設計：螢幕上顯示的文字。"
     }
   ],
   "shows": [
     {
       "id": "S1",
-      "visual": "畫面內容: Camera angle, movement, and specific action for the product display.",
-      "voiceover": "口播內容: The exact spoken line showcasing the product.",
-      "text_overlay": "字卡設計: What text appears on screen."
+      "visual": "畫面內容：產品展示的鏡頭角度、運動方式和具體動作。",
+      "voiceover": "口播內容：展示產品的實際台詞。",
+      "text_overlay": "字卡設計：螢幕上顯示的文字。"
     }
   ]
 }
 
-RULES:
-- Each category MUST have exactly 10 items (H1-H10, P1-P10, S1-S10).
-- Each item MUST have all 3 fields: visual, voiceover, text_overlay.
-- "visual" describes camera angle, movement, setting, and specific on-screen action.
-- "voiceover" is the actual spoken line (conversational, natural, realistic).
-- "text_overlay" is what text/graphics appear on screen during this beat.
-- Every item must be DISTINCT — no repetition across items.
-- Mirror the reference video's style and logic when analysis is provided.
-- All content should be in the same language as the product description.`;
+規則：
+- 每個類別必須恰好有 10 個項目（H1-H10、P1-P10、S1-S10）。
+- 每個項目必須包含所有 3 個欄位：visual、voiceover、text_overlay。
+- "visual" 描述鏡頭角度、運動方式、場景設定和具體的畫面動作。
+- "voiceover" 是實際要說的台詞（口語化、自然、真實）。
+- "text_overlay" 是這個節拍中螢幕上顯示的文字/圖形。
+- 每個項目必須獨特 — 不可重複。
+- 有參考影片分析時，需模仿其風格和邏輯。
+- 所有內容必須使用繁體中文。`;
 
 async function runStep2Menu(controller, contextText) {
   sse(controller, 'status', { message: '正在生成 10/10/10 創意選單...' });
@@ -150,60 +151,60 @@ async function runStep2Menu(controller, contextText) {
   try {
     parsed = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini returned invalid JSON for 10/10/10', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: 'Gemini 回傳的 10/10/10 JSON 格式無效', raw: text.slice(0, 400) });
     return;
   }
 
   for (const key of ['hooks', 'pains', 'shows']) {
     if (!Array.isArray(parsed[key]) || parsed[key].length === 0) {
-      sse(controller, 'error', { message: `Missing or empty "${key}" in response` });
+      sse(controller, 'error', { message: `回應中缺少或為空的欄位：「${key}」` });
       return;
     }
   }
 
   sse(controller, 'result', parsed);
-  sse(controller, 'done', { message: '10/10/10 complete' });
+  sse(controller, 'done', { message: '10/10/10 生成完成' });
 }
 
 // ──────────────────────────────────────────────────────
 //  STEP 3 — Final Assembly
 // ──────────────────────────────────────────────────────
 
-const STEP3_SYSTEM = `You are a short-form video ad editor assembling a final production script.
-Target audience: 30–55 year olds.
-Brand voice (3ZeBra): Warm, confident, benefit-first. Conversational and realistic.
+const STEP3_SYSTEM = `你是一位短影片廣告剪輯師，正在組裝最終的製作腳本。
+目標受眾：30–55 歲。
+品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
 
-RESTRICTIONS:
-- NO false claims, NO clinical/medical jargon, NO Gen-Z slang.
-- Total video length: STRICTLY 25–35 seconds.
-- Each beat should be 15–20 seconds interval.
+限制：
+- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
+- 影片總長度：嚴格控制在 25–35 秒。
+- 每個節拍間隔為 15–20 秒。
 
-You will receive selected creative blocks (Hooks, Pain Points, Product Displays).
-Weave them into ONE cohesive, flowing ad script.
+你會收到用戶選擇的創意積木（鉤子、痛點、展示）。
+請將它們編織成一個完整、流暢的廣告腳本。
 
-Return EXACTLY this JSON (no markdown fences):
+請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
   "script": [
     {
       "time": "0:00–0:05",
-      "visual": "Detailed description of what appears on screen.",
-      "voiceover": "The exact spoken script.",
-      "text_overlay": "Text/graphics that appear on screen."
+      "visual": "螢幕上顯示的詳細畫面描述。",
+      "voiceover": "實際的口播台詞。",
+      "text_overlay": "螢幕上顯示的文字/圖形。"
     }
   ],
-  "total_duration": "30 seconds"
+  "total_duration": "30 秒"
 }
 
-RULES:
-- The script must flow naturally as ONE cohesive video — not a collage of disconnected beats.
-- Open with the strongest hook.
-- Build tension with pain points in the middle.
-- Close with the best product display / CTA.
-- Visuals must be specific: camera angles, settings, transitions, text overlays.
-- Voiceover must sound like a real person talking — warm, confident, not an ad read.
-- Text overlays should reinforce key points without being redundant.
-- STRICTLY 25–35 seconds total.
-- All content should match the language of the selected blocks.`;
+規則：
+- 腳本必須自然流暢，像一支完整的影片 — 不是拼湊的片段。
+- 用最強的鉤子開場。
+- 中段用痛點製造緊張感。
+- 結尾用最好的產品展示 / CTA 收尾。
+- 畫面描述必須具體：鏡頭角度、場景設定、轉場、字卡。
+- 口播必須像真人在說話 — 溫暖、有自信，不像在念廣告稿。
+- 字卡應強化重點但不重複口播內容。
+- 嚴格控制在 25–35 秒。
+- 所有內容必須使用繁體中文。`;
 
 async function runStep3Assembly(controller, body) {
   sse(controller, 'status', { message: '正在組裝最終腳本...' });
@@ -218,24 +219,24 @@ async function runStep3Assembly(controller, body) {
     `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`
   ).join('\n');
 
-  const prompt = `Assemble a final ad script from these selected creative blocks:
+  const prompt = `請從以下選定的創意積木組裝最終廣告腳本：
 
-PRODUCT: ${body.productName || 'Product'}
-DESCRIPTION: ${body.productDesc || ''}
+產品名稱：${body.productName || '產品'}
+產品描述：${body.productDesc || ''}
 
-SELECTED HOOKS (影片鉤子):
-${selectedHooks || 'None selected'}
+已選鉤子（影片鉤子）：
+${selectedHooks || '未選擇'}
 
-SELECTED PAIN POINTS (痛點分鏡):
-${selectedPains || 'None selected'}
+已選痛點（痛點分鏡）：
+${selectedPains || '未選擇'}
 
-SELECTED PRODUCT DISPLAYS (展示分鏡):
-${selectedShows || 'None selected'}
+已選展示（展示分鏡）：
+${selectedShows || '未選擇'}
 
-REFERENCE ANALYSIS:
-${body.analysisContext || 'No reference analysis available'}
+參考分析：
+${body.analysisContext || '無參考分析'}
 
-Create a cohesive 25-35 second ad script. Use the best hook to open, pain points for tension, and product displays to close.`;
+請組裝一個 25-35 秒的完整廣告腳本。用最強的鉤子開場，用痛點製造緊張感，用產品展示收尾。所有內容必須使用繁體中文。`;
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
@@ -253,17 +254,17 @@ Create a cohesive 25-35 second ad script. Use the best hook to open, pain points
   try {
     parsed = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini returned invalid JSON for final script', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: 'Gemini 回傳的最終腳本 JSON 格式無效', raw: text.slice(0, 400) });
     return;
   }
 
   if (!Array.isArray(parsed.script) || parsed.script.length === 0) {
-    sse(controller, 'error', { message: 'Empty script returned' });
+    sse(controller, 'error', { message: '回傳的腳本為空' });
     return;
   }
 
   sse(controller, 'result', parsed);
-  sse(controller, 'done', { message: 'Script assembly complete' });
+  sse(controller, 'done', { message: '腳本組裝完成' });
 }
 
 // ──────────────────────────────────────────────────────
@@ -301,12 +302,12 @@ export default async function handler(req) {
     const productDesc = url.searchParams.get('desc') || '';
 
     if (!videoUrl) {
-      return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), { status: 400, headers: corsJson });
+      return new Response(JSON.stringify({ error: '缺少 ?url= 參數' }), { status: 400, headers: corsJson });
     }
 
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
-      return new Response(JSON.stringify({ error: 'Invalid YouTube URL' }), { status: 400, headers: corsJson });
+      return new Response(JSON.stringify({ error: '無效的 YouTube 網址' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
@@ -315,7 +316,6 @@ export default async function handler(req) {
           sse(controller, 'status', { message: '正在抓取字幕...' });
 
           let transcript = '';
-          let transcriptFailed = false;
 
           try {
             const transcriptRes = await fetch(
@@ -328,11 +328,11 @@ export default async function handler(req) {
               transcript = transcriptData.content || '';
             }
           } catch {
-            // Supadata request failed entirely
+            // Supadata 請求失敗
           }
 
           if (!transcript || transcript.length < 20) {
-            // No usable transcript — return error so frontend triggers manual form
+            // 無可用字幕 — 回傳錯誤讓前端觸發手動輸入表單
             sse(controller, 'error', {
               status: 'error',
               message: 'TRANSCRIPT_NOT_FOUND',
@@ -347,7 +347,7 @@ export default async function handler(req) {
 
           await runStep1Analysis(controller, transcript, productName, productDesc);
         } catch (err) {
-          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
         } finally {
           controller.close();
         }
@@ -363,7 +363,7 @@ export default async function handler(req) {
     try {
       body = await req.json();
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsJson });
+      return new Response(JSON.stringify({ error: '無效的 JSON 格式' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
@@ -372,40 +372,40 @@ export default async function handler(req) {
           let contextText;
 
           if (body.transcript && body.analysis) {
-            // From video analysis path
-            contextText = `Generate a 10/10/10 creative breakdown for this product ad.
+            // 有影片分析的路徑
+            contextText = `請為以下產品廣告生成 10/10/10 創意分解。
 
-PRODUCT: ${body.productName || 'Unknown'}
-DESCRIPTION: ${body.productDesc || 'N/A'}
+產品名稱：${body.productName || '未知'}
+產品描述：${body.productDesc || '無'}
 
-REFERENCE VIDEO TRANSCRIPT:
+參考影片字幕（可能為英文，但請用繁體中文生成所有內容）：
 ${body.transcript}
 
-REFERENCE LOGIC ANALYSIS:
-Hook Strategy: ${body.analysis.hook_analysis || ''}
-Pain Strategy: ${body.analysis.pain_analysis || ''}
-Show Strategy: ${body.analysis.show_analysis || ''}
-Flow: ${body.analysis.flow_summary || ''}
-Visual Inference: ${body.analysis.visual_inference || ''}
+參考邏輯分析：
+鉤子策略：${body.analysis.hook_analysis || ''}
+痛點策略：${body.analysis.pain_analysis || ''}
+展示策略：${body.analysis.show_analysis || ''}
+整體流程：${body.analysis.flow_summary || ''}
+視覺推斷：${body.analysis.visual_inference || ''}
 
-Mirror the reference video's style and logic. Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.`;
+請模仿參考影片的風格和邏輯，為此產品量身打造 10 個鉤子、10 個痛點、10 個展示。所有內容必須使用繁體中文。`;
           } else {
-            // Manual product entry path (no video reference)
-            contextText = `Generate a 10/10/10 creative breakdown for this product ad.
-You have NO reference video. Use your internal knowledge of high-converting ads for this niche to create compelling blocks.
+            // 手動輸入路徑（無影片參考）
+            contextText = `請為以下產品廣告生成 10/10/10 創意分解。
+你沒有參考影片。請運用你對高轉換率廣告的知識來創作。
 
-Product Name: ${body.productName || 'Unknown'}
-Product Type: ${body.productType || 'N/A'}
-Core Benefit (the "Magic Moment"): ${body.coreBenefit || 'N/A'}
-Target Audience: ${body.targetAudience || '30-55 year olds'}
+產品名稱：${body.productName || '未知'}
+產品類型：${body.productType || '無'}
+核心賣點（「Magic Moment」）：${body.coreBenefit || '無'}
+目標受眾：${body.targetAudience || '30-55 歲'}
 
-Generate 10 Hooks, 10 Pain Points, and 10 Product Displays tailored to this product.
-Base your creative direction on proven high-converting ad patterns for the "${body.productType || 'general'}" category targeting ${body.targetAudience || '30-55 year olds'}.`;
+請為此產品量身打造 10 個鉤子、10 個痛點、10 個展示。
+根據「${body.productType || '一般'}」品類、針對${body.targetAudience || '30-55 歲'}受眾的高轉換率廣告模式來創作。所有內容必須使用繁體中文。`;
           }
 
           await runStep2Menu(controller, contextText);
         } catch (err) {
-          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
         } finally {
           controller.close();
         }
@@ -421,7 +421,7 @@ Base your creative direction on proven high-converting ad patterns for the "${bo
     try {
       body = await req.json();
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsJson });
+      return new Response(JSON.stringify({ error: '無效的 JSON 格式' }), { status: 400, headers: corsJson });
     }
 
     const stream = new ReadableStream({
@@ -429,7 +429,7 @@ Base your creative direction on proven high-converting ad patterns for the "${bo
         try {
           await runStep3Assembly(controller, body);
         } catch (err) {
-          sse(controller, 'error', { message: err.message || 'Unexpected error' });
+          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
         } finally {
           controller.close();
         }
@@ -439,7 +439,7 @@ Base your creative direction on proven high-converting ad patterns for the "${bo
     return new Response(stream, { headers: sseHeaders });
   }
 
-  return new Response(JSON.stringify({ error: 'Unknown step. Use ?step=1, ?step=2, or ?step=3' }), {
+  return new Response(JSON.stringify({ error: '未知的步驟。請使用 ?step=1、?step=2 或 ?step=3' }), {
     status: 400,
     headers: corsJson,
   });
