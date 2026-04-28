@@ -99,7 +99,7 @@ function getCookiesPath() {
 
 function ensureCookies() {
   const cookiesPath = getCookiesPath();
-  if (fs.existsSync(cookiesPath)) return;
+  // Always rewrite - don't cache stale cookies
   const header = '# Netscape HTTP Cookie File\n';
   const parts = [
     process.env.YT_COOKIES || '',
