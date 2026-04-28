@@ -92,12 +92,29 @@ function sse(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+function getCookiesPath() {
+  if (IS_WIN) return path.join(__dirname, 'yt-cookies.txt');
+  return '/tmp/yt-cookies.txt';
+}
+
+function ensureCookies() {
+  const cookiesPath = getCookiesPath();
+  if (fs.existsSync(cookiesPath)) return;
+  const cookies = process.env.YT_COOKIES;
+  if (cookies) {
+    fs.writeFileSync(cookiesPath, cookies);
+  }
+}
+
 function downloadVideo(videoUrl) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(TEMP_DIR, `${Date.now()}.mp4`);
     const ytdlpPath = getYtdlpPath();
+    const cookiesPath = getCookiesPath();
 
-    execFile(ytdlpPath, [
+    ensureCookies();
+
+    const args = [
       '-f', 'worst[ext=mp4]/worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst',
       '-S', 'res:480',
       '--merge-output-format', 'mp4',
@@ -106,10 +123,17 @@ function downloadVideo(videoUrl) {
       '--socket-timeout', '30',
       '--js-runtimes', 'nodejs',
       '--extractor-args', 'youtube:player_client=mediaconnect',
-      videoUrl,
-    ], { timeout: 180000 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error(`下載失敗：${stderr || err.message}`));
-      if (!fs.existsSync(outputPath)) return reject(new Error('下載完成但找不到檔案'));
+    ];
+
+    if (fs.existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+    }
+
+    args.push(videoUrl);
+
+    execFile(ytdlpPath, args, { timeout: 180000 }, (err, stdout, stderr) => {
+      if (err) return reject(new Error(`Download failed: ${stderr || err.message}`));
+      if (!fs.existsSync(outputPath)) return reject(new Error('Download completed but file not found'));
       resolve(outputPath);
     });
   });
