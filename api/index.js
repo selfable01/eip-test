@@ -3,272 +3,382 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export const config = { runtime: 'edge' };
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const MODEL_NAME = 'gemini-2.0-flash-lite';
 
-function extractVideoId(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
-    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v');
-  } catch { /* invalid url */ }
-  return null;
-}
+const corsJson = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+const sseHeaders = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive',
+  'Access-Control-Allow-Origin': '*',
+};
 
 function sse(controller, event, data) {
   const encoder = new TextEncoder();
   controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 }
 
-// ──────────────────────────────────────────────────────
-//  STEP 1 — Context & Analysis (Reference Logic)
-// ──────────────────────────────────────────────────────
+// ── Prompts (Traditional Chinese) ──
 
-const STEP1_SYSTEM = `你是一位世界級的短影片廣告策略師與創意總監。
-你的任務是分析參考影片的字幕，推斷其成功邏輯 — 如何吸引注意力（Hook）、激發痛點（Pain）、展示產品（Show）。
+const DETECTIVE_PROMPT_TRANSCRIPT = `你是唯一的研究員——不會提供任何使用者描述。
+你會收到一段影片的字幕。請從字幕內容推斷：
 
-因為你只有字幕（沒有實際影片），你必須從語言節奏、語速、內容來推斷可能的視覺策略。
+1. 正在銷售的產品
+2. 品牌名稱（如有）
+3. 目標受眾
+4. 「Magic Moment」（核心賣點）
 
-請回傳以下 JSON 格式（不要加 markdown 標記）：
-{
-  "hook_analysis": "影片如何開場？前 2-3 秒使用了什麼吸引注意力的技巧？",
-  "pain_analysis": "影片揭露了哪些痛點或問題？如何讓觀眾感受到問題的嚴重性？",
-  "show_analysis": "影片如何呈現/展示產品？展示了什麼證據或轉變？",
-  "flow_summary": "用 2-3 句話總結整體廣告流程：Hook → 痛點 → 展示 → CTA。這支影片為什麼有效？",
-  "visual_inference": "根據字幕節奏，推斷可能使用了什麼鏡頭運動、場景設定和視覺轉場？"
-}
-
-規則：
-- 回答必須使用繁體中文。
-- 具體且可執行，不要泛泛而談。
-- 根據字幕的實際內容進行分析。
-- 從語速線索推斷視覺（短句 = 快速剪接，長描述 = 慢鏡頭等）。
-- 語氣溫暖、有自信、專業。`;
-
-async function runStep1Analysis(controller, transcript, productName, productDesc) {
-  sse(controller, 'status', { message: '正在分析影片邏輯...' });
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: 'application/json',
-    },
-    systemInstruction: STEP1_SYSTEM,
-  });
-
-  const prompt = `請分析以下參考影片字幕，用於廣告創作。
-
-產品名稱：${productName}
-產品描述：${productDesc}
-
-字幕內容（可能為英文，但請用繁體中文回答）：
-${transcript}
-
-請詳細分析影片的成功邏輯（Hook、痛點、展示、整體流程）。所有回答必須使用繁體中文。`;
-
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
-
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    sse(controller, 'error', { message: 'Gemini 回傳的 JSON 格式無效', raw: text.slice(0, 400) });
-    return;
-  }
-
-  sse(controller, 'analysis', parsed);
-  sse(controller, 'done', { message: '分析完成' });
-}
-
-// ──────────────────────────────────────────────────────
-//  STEP 2 — 10/10/10 Multimodal Menu
-// ──────────────────────────────────────────────────────
-
-const STEP2_SYSTEM = `你是一位世界級的短影片廣告策略師。
-目標受眾：30–55 歲。
-品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
-
-限制：
-- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
-- 保持誠實、務實、合規。
-
-請生成恰好 30 個創意「積木」，分為 3 個類別，每類 10 個。
+僅根據字幕分析，以高能量 3ZeBra 風格生成完整的 10/10/10 廣告選單。
 
 請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
+  "product_name": "辨識出的產品名稱",
+  "brand": "辨識出的品牌名稱或「未知」",
+  "target_audience": "辨識出的目標受眾",
+  "magic_moment": "核心賣點 / 轉變",
   "hooks": [
-    {
-      "id": "H1",
-      "visual": "畫面內容：詳細描述鏡頭角度、運動方式和具體動作。",
-      "voiceover": "口播內容：實際要說的開場台詞。",
-      "text_overlay": "字卡設計：螢幕上顯示的文字。"
-    }
+    { "id": "H1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的開場台詞", "text_overlay": "螢幕上顯示的文字" }
   ],
   "pains": [
-    {
-      "id": "P1",
-      "visual": "畫面內容：痛點場景的鏡頭角度、運動方式和具體動作。",
-      "voiceover": "口播內容：揭露痛點的實際台詞。",
-      "text_overlay": "字卡設計：螢幕上顯示的文字。"
-    }
+    { "id": "P1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的痛點台詞", "text_overlay": "螢幕上顯示的文字" }
   ],
   "shows": [
-    {
-      "id": "S1",
-      "visual": "畫面內容：產品展示的鏡頭角度、運動方式和具體動作。",
-      "voiceover": "口播內容：展示產品的實際台詞。",
-      "text_overlay": "字卡設計：螢幕上顯示的文字。"
-    }
+    { "id": "S1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的產品展示台詞", "text_overlay": "螢幕上顯示的文字" }
   ]
 }
 
 規則：
-- 每個類別必須恰好有 10 個項目（H1-H10、P1-P10、S1-S10）。
+- 每個類別恰好 10 個項目（H1-H10、P1-P10、S1-S10）。
 - 每個項目必須包含所有 3 個欄位：visual、voiceover、text_overlay。
-- "visual" 描述鏡頭角度、運動方式、場景設定和具體的畫面動作。
-- "voiceover" 是實際要說的台詞（口語化、自然、真實）。
-- "text_overlay" 是這個節拍中螢幕上顯示的文字/圖形。
-- 每個項目必須獨特 — 不可重複。
-- 有參考影片分析時，需模仿其風格和邏輯。
+- 「visual」描述鏡頭角度、運動方式、場景設定、具體動作。
+- 「voiceover」是實際要說的台詞——口語化、溫暖、有自信、真實。
+- 「text_overlay」是該節拍中螢幕上顯示的文字/圖形。
+- 每個項目必須獨特——不可重複。
+- 目標受眾：30-55 歲。
+- 品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
+- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
+- 保持誠實、務實、合規。
 - 所有內容必須使用繁體中文。`;
 
-async function runStep2Menu(controller, contextText) {
-  sse(controller, 'status', { message: '正在生成 10/10/10 創意選單...' });
+const DETECTIVE_PROMPT_VIDEO = `仔細觀看並聆聽這支影片。你是唯一的研究員——不會提供任何使用者描述。
 
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: 0.9,
-      responseMimeType: 'application/json',
-    },
-    systemInstruction: STEP2_SYSTEM,
-  });
+請辨識：
+1. 正在銷售的產品
+2. 品牌名稱（如有）
+3. 目標受眾
+4. 「Magic Moment」（核心賣點）
 
-  const result = await model.generateContent(contextText);
-  const text = result.response.text();
-
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    sse(controller, 'error', { message: 'Gemini 回傳的 10/10/10 JSON 格式無效', raw: text.slice(0, 400) });
-    return;
-  }
-
-  for (const key of ['hooks', 'pains', 'shows']) {
-    if (!Array.isArray(parsed[key]) || parsed[key].length === 0) {
-      sse(controller, 'error', { message: `回應中缺少或為空的欄位：「${key}」` });
-      return;
-    }
-  }
-
-  sse(controller, 'result', parsed);
-  sse(controller, 'done', { message: '10/10/10 生成完成' });
-}
-
-// ──────────────────────────────────────────────────────
-//  STEP 3 — Final Assembly
-// ──────────────────────────────────────────────────────
-
-const STEP3_SYSTEM = `你是一位短影片廣告剪輯師，正在組裝最終的製作腳本。
-目標受眾：30–55 歲。
-品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
-
-限制：
-- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
-- 影片總長度：嚴格控制在 25–35 秒。
-- 每個節拍間隔為 15–20 秒。
-
-你會收到用戶選擇的創意積木（鉤子、痛點、展示）。
-請將它們編織成一個完整、流暢的廣告腳本。
+僅根據你對此影片的分析，以高能量 3ZeBra 風格生成完整的 10/10/10 廣告選單。
 
 請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
+  "product_name": "辨識出的產品名稱",
+  "brand": "辨識出的品牌名稱或「未知」",
+  "target_audience": "辨識出的目標受眾",
+  "magic_moment": "核心賣點 / 轉變",
+  "hooks": [
+    { "id": "H1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的開場台詞", "text_overlay": "螢幕上顯示的文字" }
+  ],
+  "pains": [
+    { "id": "P1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的痛點台詞", "text_overlay": "螢幕上顯示的文字" }
+  ],
+  "shows": [
+    { "id": "S1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的產品展示台詞", "text_overlay": "螢幕上顯示的文字" }
+  ]
+}
+
+規則：
+- 每個類別恰好 10 個項目（H1-H10、P1-P10、S1-S10）。
+- 每個項目必須包含所有 3 個欄位：visual、voiceover、text_overlay。
+- 每個項目必須獨特——不可重複。
+- 目標受眾：30-55 歲。
+- 品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。
+- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
+- 所有內容必須使用繁體中文。`;
+
+const SCRIPT_PROMPT = `你是一位短影片廣告剪輯師，正在組裝最終的製作腳本。
+
+你會收到產品分析和 10/10/10 選單（鉤子、痛點、展示）。請挑選最強的角度，編織成一個流暢的 30 秒廣告腳本。
+
+請回傳以下 JSON 格式（不要加 markdown 標記）：
+{
+  "product_name": "產品名稱",
   "script": [
     {
-      "time": "0:00–0:05",
-      "visual": "螢幕上顯示的詳細畫面描述。",
-      "voiceover": "實際的口播台詞。",
-      "text_overlay": "螢幕上顯示的文字/圖形。"
+      "time": "0:00-0:03",
+      "visual": "詳細的畫面描述",
+      "voiceover": "實際的口播台詞",
+      "text_overlay": "螢幕上顯示的文字/圖形"
     }
   ],
   "total_duration": "30 秒"
 }
 
 規則：
-- 腳本必須自然流暢，像一支完整的影片 — 不是拼湊的片段。
 - 用最強的鉤子開場。
 - 中段用痛點製造緊張感。
 - 結尾用最好的產品展示 / CTA 收尾。
+- 腳本必須自然流暢，像一支完整的影片——不是拼湊的片段。
 - 畫面描述必須具體：鏡頭角度、場景設定、轉場、字卡。
-- 口播必須像真人在說話 — 溫暖、有自信，不像在念廣告稿。
+- 口播必須像真人在說話——溫暖、有自信，不像在念廣告稿。
 - 字卡應強化重點但不重複口播內容。
-- 嚴格控制在 25–35 秒。
+- 嚴格控制在 25-35 秒。
+- 目標受眾：30-55 歲。
+- 品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。
+- 禁止虛假宣稱、禁止醫療術語、禁止年輕人網路用語。
 - 所有內容必須使用繁體中文。`;
 
-async function runStep3Assembly(controller, body) {
-  sse(controller, 'status', { message: '正在組裝最終腳本...' });
+// ── Helpers ──
 
-  const selectedHooks = (body.hooks || []).map(h =>
-    `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`
-  ).join('\n');
-  const selectedPains = (body.pains || []).map(p =>
-    `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`
-  ).join('\n');
-  const selectedShows = (body.shows || []).map(s =>
-    `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`
-  ).join('\n');
+function extractVideoId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
+    if (u.hostname.includes('youtube.com')) {
+      const shortsMatch = u.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (shortsMatch) return shortsMatch[1];
+      return u.searchParams.get('v');
+    }
+  } catch { /* invalid url */ }
+  return null;
+}
 
-  const prompt = `請從以下選定的創意積木組裝最終廣告腳本：
+function isSupportedUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+    if (host === 'youtu.be' || host.includes('youtube.com')) return true;
+    if (host.includes('facebook.com') || host.includes('fb.watch') || host.includes('fb.com')) return true;
+    if (host.includes('instagram.com')) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
 
-產品名稱：${body.productName || '產品'}
-產品描述：${body.productDesc || ''}
+// ── Script generation (shared) ──
 
-已選鉤子（影片鉤子）：
-${selectedHooks || '未選擇'}
-
-已選痛點（痛點分鏡）：
-${selectedPains || '未選擇'}
-
-已選展示（展示分鏡）：
-${selectedShows || '未選擇'}
-
-參考分析：
-${body.analysisContext || '無參考分析'}
-
-請組裝一個 25-35 秒的完整廣告腳本。用最強的鉤子開場，用痛點製造緊張感，用產品展示收尾。所有內容必須使用繁體中文。`;
+async function generateScript(controller, menu) {
+  sse(controller, 'status', { step: 4, message: '正在生成 30 秒廣告腳本...' });
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: 'application/json',
-    },
-    systemInstruction: STEP3_SYSTEM,
+    model: MODEL_NAME,
+    generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
   });
+
+  const prompt = `${SCRIPT_PROMPT}
+
+辨識出的產品：${menu.product_name || '未知'}
+品牌：${menu.brand || '未知'}
+目標受眾：${menu.target_audience || '30-55 歲'}
+核心賣點：${menu.magic_moment || '無'}
+
+10/10/10 選單：
+鉤子：
+${(menu.hooks || []).map(h => `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`).join('\n')}
+
+痛點：
+${(menu.pains || []).map(p => `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`).join('\n')}
+
+展示：
+${(menu.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`).join('\n')}
+
+請挑選最強的角度，組裝一個 25-35 秒的廣告腳本。`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-  let parsed;
+  let script;
   try {
-    parsed = JSON.parse(text);
+    script = JSON.parse(text);
   } catch {
-    sse(controller, 'error', { message: 'Gemini 回傳的最終腳本 JSON 格式無效', raw: text.slice(0, 400) });
+    sse(controller, 'error', { message: '分析失敗：腳本生成格式錯誤。' });
     return;
   }
 
-  if (!Array.isArray(parsed.script) || parsed.script.length === 0) {
-    sse(controller, 'error', { message: '回傳的腳本為空' });
+  if (!Array.isArray(script.script) || script.script.length === 0) {
+    sse(controller, 'error', { message: '分析失敗：腳本內容為空。' });
     return;
   }
 
-  sse(controller, 'result', parsed);
-  sse(controller, 'done', { message: '腳本組裝完成' });
+  sse(controller, 'script', script);
+  sse(controller, 'done', { message: '完成' });
 }
 
 // ──────────────────────────────────────────────────────
-//  HANDLER
+//  /api/generate — URL-based (YouTube uses transcript, FB/IG not supported on Vercel)
+// ──────────────────────────────────────────────────────
+
+async function handleGenerate(req) {
+  const url = new URL(req.url);
+  const videoUrl = url.searchParams.get('url');
+
+  if (!videoUrl) {
+    return new Response(JSON.stringify({ error: '缺少 ?url= 參數' }), { status: 400, headers: corsJson });
+  }
+
+  if (!isSupportedUrl(videoUrl)) {
+    return new Response(JSON.stringify({ error: '不支援的網址。請使用 YouTube、Facebook 或 Instagram 連結。' }), { status: 400, headers: corsJson });
+  }
+
+  const videoId = extractVideoId(videoUrl);
+
+  // On Vercel we can only use transcript for YouTube (no yt-dlp available)
+  // For Facebook/Instagram, we need local server
+  if (!videoId) {
+    return new Response(JSON.stringify({
+      error: 'Vercel 雲端版僅支援 YouTube 網址。Facebook / Instagram 請使用本機版（npm start）或直接上傳 MP4。'
+    }), { status: 400, headers: corsJson });
+  }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Step 1: Fetch transcript
+        sse(controller, 'status', { step: 1, message: '正在抓取影片字幕...' });
+
+        let transcript = '';
+        try {
+          const transcriptRes = await fetch(
+            `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
+            { headers: { 'x-api-key': process.env.SUPADATA_API_KEY || '' } }
+          );
+          if (transcriptRes.ok) {
+            const data = await transcriptRes.json();
+            transcript = data.content || '';
+          }
+        } catch { /* transcript fetch failed */ }
+
+        if (!transcript || transcript.length < 20) {
+          sse(controller, 'error', {
+            message: '無法取得影片字幕。請改用「上傳 MP4」功能，或在本機版執行。',
+          });
+          controller.close();
+          return;
+        }
+
+        sse(controller, 'status', { step: 1, message: `已取得字幕（${transcript.length} 字元）` });
+
+        // Step 2+3: Detective analysis with transcript
+        sse(controller, 'status', { step: 3, message: 'AI 偵探正在分析字幕...' });
+
+        const model = genAI.getGenerativeModel({
+          model: MODEL_NAME,
+          generationConfig: { temperature: 0.8, responseMimeType: 'application/json' },
+        });
+
+        const result = await model.generateContent(
+          `${DETECTIVE_PROMPT_TRANSCRIPT}\n\n以下是影片字幕內容（可能為英文，但請用繁體中文回答）：\n${transcript}`
+        );
+
+        const analysisText = result.response.text();
+        let menu;
+        try {
+          menu = JSON.parse(analysisText);
+        } catch {
+          sse(controller, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+          controller.close();
+          return;
+        }
+
+        for (const key of ['hooks', 'pains', 'shows']) {
+          if (!Array.isArray(menu[key]) || menu[key].length === 0) {
+            sse(controller, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+            controller.close();
+            return;
+          }
+        }
+
+        sse(controller, 'menu', menu);
+
+        // Step 4: Generate script
+        await generateScript(controller, menu);
+      } catch (err) {
+        sse(controller, 'error', { message: '分析失敗：' + (err.message || '發生未預期的錯誤') });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders });
+}
+
+// ──────────────────────────────────────────────────────
+//  /api/upload — Direct MP4 upload (Vercel has ~4.5MB body limit)
+// ──────────────────────────────────────────────────────
+
+async function handleUpload(req) {
+  let bodyBytes;
+  try {
+    bodyBytes = await req.arrayBuffer();
+  } catch {
+    return new Response(JSON.stringify({ error: '無法讀取上傳資料' }), { status: 400, headers: corsJson });
+  }
+
+  if (bodyBytes.byteLength === 0) {
+    return new Response(JSON.stringify({ error: '未收到檔案資料' }), { status: 400, headers: corsJson });
+  }
+
+  // Convert to base64 for inline Gemini call
+  const base64Data = btoa(String.fromCharCode(...new Uint8Array(bodyBytes)));
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        sse(controller, 'status', { step: 1, message: '已收到影片檔案' });
+        sse(controller, 'status', { step: 3, message: 'AI 偵探正在分析影片...' });
+
+        const model = genAI.getGenerativeModel({
+          model: MODEL_NAME,
+          generationConfig: { temperature: 0.8, responseMimeType: 'application/json' },
+        });
+
+        const result = await model.generateContent([
+          DETECTIVE_PROMPT_VIDEO,
+          {
+            inlineData: {
+              mimeType: 'video/mp4',
+              data: base64Data,
+            },
+          },
+        ]);
+
+        const analysisText = result.response.text();
+        let menu;
+        try {
+          menu = JSON.parse(analysisText);
+        } catch {
+          sse(controller, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+          controller.close();
+          return;
+        }
+
+        for (const key of ['hooks', 'pains', 'shows']) {
+          if (!Array.isArray(menu[key]) || menu[key].length === 0) {
+            sse(controller, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+            controller.close();
+            return;
+          }
+        }
+
+        sse(controller, 'menu', menu);
+        await generateScript(controller, menu);
+      } catch (err) {
+        sse(controller, 'error', {
+          message: '分析失敗：' + (err.message || '發生未預期的錯誤'),
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders });
+}
+
+// ──────────────────────────────────────────────────────
+//  MAIN HANDLER
 // ──────────────────────────────────────────────────────
 
 export default async function handler(req) {
@@ -284,163 +394,22 @@ export default async function handler(req) {
   }
 
   const url = new URL(req.url);
-  const step = url.searchParams.get('step');
+  const pathname = url.pathname;
 
-  const sseHeaders = {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-  };
-
-  const corsJson = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-
-  // ── STEP 1: Analyze reference video ──
-  if (step === '1') {
-    const videoUrl = url.searchParams.get('url');
-    const productName = url.searchParams.get('product') || '';
-    const productDesc = url.searchParams.get('desc') || '';
-
-    if (!videoUrl) {
-      return new Response(JSON.stringify({ error: '缺少 ?url= 參數' }), { status: 400, headers: corsJson });
-    }
-
-    const videoId = extractVideoId(videoUrl);
-    if (!videoId) {
-      return new Response(JSON.stringify({ error: '無效的 YouTube 網址' }), { status: 400, headers: corsJson });
-    }
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          sse(controller, 'status', { message: '正在抓取字幕...' });
-
-          let transcript = '';
-
-          try {
-            const transcriptRes = await fetch(
-              `https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`,
-              { headers: { 'x-api-key': process.env.SUPADATA_API_KEY } }
-            );
-
-            if (transcriptRes.ok) {
-              const transcriptData = await transcriptRes.json();
-              transcript = transcriptData.content || '';
-            }
-          } catch {
-            // Supadata 請求失敗
-          }
-
-          if (!transcript || transcript.length < 20) {
-            // 無可用字幕 — 回傳錯誤讓前端觸發手動輸入表單
-            sse(controller, 'error', {
-              status: 'error',
-              message: 'TRANSCRIPT_NOT_FOUND',
-              fallback: true,
-            });
-            controller.close();
-            return;
-          }
-
-          sse(controller, 'status', { message: `取得字幕 (${transcript.length} 字元)，開始分析...` });
-          sse(controller, 'transcript', { content: transcript });
-
-          await runStep1Analysis(controller, transcript, productName, productDesc);
-        } catch (err) {
-          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, { headers: sseHeaders });
+  // New routes
+  if (pathname === '/api/generate' || pathname === '/api/generate/') {
+    return handleGenerate(req);
   }
 
-  // ── STEP 2: Generate 10/10/10 menu ──
-  if (step === '2') {
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: '無效的 JSON 格式' }), { status: 400, headers: corsJson });
+  if (pathname === '/api/upload' || pathname === '/api/upload/') {
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: '請使用 POST 方法' }), { status: 405, headers: corsJson });
     }
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          let contextText;
-
-          if (body.transcript && body.analysis) {
-            // 有影片分析的路徑
-            contextText = `請為以下產品廣告生成 10/10/10 創意分解。
-
-產品名稱：${body.productName || '未知'}
-產品描述：${body.productDesc || '無'}
-
-參考影片字幕（可能為英文，但請用繁體中文生成所有內容）：
-${body.transcript}
-
-參考邏輯分析：
-鉤子策略：${body.analysis.hook_analysis || ''}
-痛點策略：${body.analysis.pain_analysis || ''}
-展示策略：${body.analysis.show_analysis || ''}
-整體流程：${body.analysis.flow_summary || ''}
-視覺推斷：${body.analysis.visual_inference || ''}
-
-請模仿參考影片的風格和邏輯，為此產品量身打造 10 個鉤子、10 個痛點、10 個展示。所有內容必須使用繁體中文。`;
-          } else {
-            // 手動輸入路徑（無影片參考）
-            contextText = `請為以下產品廣告生成 10/10/10 創意分解。
-你沒有參考影片。請運用你對高轉換率廣告的知識來創作。
-
-產品名稱：${body.productName || '未知'}
-產品類型：${body.productType || '無'}
-核心賣點（「Magic Moment」）：${body.coreBenefit || '無'}
-目標受眾：${body.targetAudience || '30-55 歲'}
-
-請為此產品量身打造 10 個鉤子、10 個痛點、10 個展示。
-根據「${body.productType || '一般'}」品類、針對${body.targetAudience || '30-55 歲'}受眾的高轉換率廣告模式來創作。所有內容必須使用繁體中文。`;
-          }
-
-          await runStep2Menu(controller, contextText);
-        } catch (err) {
-          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, { headers: sseHeaders });
+    return handleUpload(req);
   }
 
-  // ── STEP 3: Final assembly ──
-  if (step === '3') {
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(JSON.stringify({ error: '無效的 JSON 格式' }), { status: 400, headers: corsJson });
-    }
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          await runStep3Assembly(controller, body);
-        } catch (err) {
-          sse(controller, 'error', { message: err.message || '發生未預期的錯誤' });
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, { headers: sseHeaders });
-  }
-
-  return new Response(JSON.stringify({ error: '未知的步驟。請使用 ?step=1、?step=2 或 ?step=3' }), {
-    status: 400,
+  return new Response(JSON.stringify({ error: '找不到此路由。請使用 /api/generate 或 /api/upload' }), {
+    status: 404,
     headers: corsJson,
   });
 }

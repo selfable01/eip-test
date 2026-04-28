@@ -10,7 +10,12 @@ const { GoogleAIFileManager, FileState } = require('@google/generative-ai/server
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '50mb' }));
+// Only parse JSON for non-upload routes
+app.use((req, res, next) => {
+  if (req.path === '/api/upload') return next();
+  express.json({ limit: '10mb' })(req, res, next);
+});
+
 app.use(express.static(path.join(__dirname), { redirect: false }));
 
 const TEMP_DIR = path.join(__dirname, 'temp');
@@ -27,11 +32,8 @@ function isSupportedUrl(url) {
   try {
     const u = new URL(url);
     const host = u.hostname.replace('www.', '');
-    // YouTube
     if (host === 'youtu.be' || host.includes('youtube.com')) return true;
-    // Facebook
     if (host.includes('facebook.com') || host.includes('fb.watch') || host.includes('fb.com')) return true;
-    // Instagram
     if (host.includes('instagram.com')) return true;
     return false;
   } catch {
@@ -99,7 +101,7 @@ function sseHeaders(res) {
   });
 }
 
-// ── Prompts (all output in Traditional Chinese) ──
+// ── Prompts ──
 
 const DETECTIVE_PROMPT = `仔細觀看並聆聽這支影片。你是唯一的研究員——不會提供任何使用者描述。
 
@@ -182,10 +184,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Shared pipeline (after we have a Gemini file) ──
+// ── Shared AI pipeline ──
 
 async function runPipeline(res, geminiFile) {
-  // Step 3: Detective Analysis
   sse(res, 'status', { step: 3, message: 'AI 偵探正在分析影片...' });
 
   const analysisModel = genAI.getGenerativeModel({
@@ -223,8 +224,6 @@ async function runPipeline(res, geminiFile) {
   }
 
   sse(res, 'menu', menu);
-
-  // Step 4: Generate script
   sse(res, 'status', { step: 4, message: '正在生成 30 秒廣告腳本...' });
 
   const scriptModel = genAI.getGenerativeModel({
@@ -274,9 +273,7 @@ ${(menu.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voice
   sse(res, 'done', { message: '完成' });
 }
 
-// ──────────────────────────────────────────────────────
-//  Route 1: URL-based (YouTube / Facebook / Instagram)
-// ──────────────────────────────────────────────────────
+// ── Route 1: URL-based (YouTube / Facebook / Instagram) ──
 
 app.get('/api/generate', async (req, res) => {
   const videoUrl = req.query.url;
@@ -313,24 +310,29 @@ app.get('/api/generate', async (req, res) => {
   }
 });
 
-// ──────────────────────────────────────────────────────
-//  Route 2: Direct MP4 upload
-// ──────────────────────────────────────────────────────
+// ── Route 2: Direct MP4 upload ──
 
 app.post('/api/upload', async (req, res) => {
-  // Receive raw binary body
   const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
+  let totalSize = 0;
+  const MAX_SIZE = 200 * 1024 * 1024; // 200MB
+
+  req.on('data', chunk => {
+    totalSize += chunk.length;
+    if (totalSize <= MAX_SIZE) {
+      chunks.push(chunk);
+    }
+  });
+
   req.on('end', async () => {
+    if (totalSize > MAX_SIZE) {
+      return res.status(413).json({ error: '檔案過大，請上傳 200MB 以內的影片' });
+    }
+
     const buffer = Buffer.concat(chunks);
 
     if (buffer.length === 0) {
       return res.status(400).json({ error: '未收到檔案資料' });
-    }
-
-    // Max 200MB
-    if (buffer.length > 200 * 1024 * 1024) {
-      return res.status(413).json({ error: '檔案過大，請上傳 200MB 以內的影片' });
     }
 
     sseHeaders(res);
