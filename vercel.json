@@ -1,14 +1,10 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "server.js", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/server.js" },
-    { "src": "/(.*)", "dest": "/server.js" }
-  ],
   "functions": {
-    "server.js": {
+    "api/generate.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "api/upload.js": {
       "maxDuration": 300,
       "memory": 1024
     }
