@@ -93,14 +93,14 @@ function sse(res, event, data) {
 }
 
 function getCookiesPath() {
-  if (IS_WIN) return path.join(__dirname, 'yt-cookies.txt');
-  return '/tmp/yt-cookies.txt';
+  if (IS_WIN) return path.join(__dirname, 'cookies.txt');
+  return '/tmp/cookies.txt';
 }
 
 function ensureCookies() {
   const cookiesPath = getCookiesPath();
   if (fs.existsSync(cookiesPath)) return;
-  const cookies = process.env.YT_COOKIES;
+  const cookies = process.env.COOKIES;
   if (cookies) {
     fs.writeFileSync(cookiesPath, cookies);
   }
