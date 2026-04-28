@@ -121,8 +121,7 @@ function downloadVideo(videoUrl) {
       '-o', outputPath,
       '--no-playlist',
       '--socket-timeout', '30',
-      '--js-runtimes', 'nodejs',
-      '--extractor-args', 'youtube:player_client=mediaconnect',
+      '--js-runtimes', 'node',
     ];
 
     if (fs.existsSync(cookiesPath)) {
