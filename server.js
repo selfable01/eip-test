@@ -104,6 +104,8 @@ function downloadVideo(videoUrl) {
       '-o', outputPath,
       '--no-playlist',
       '--socket-timeout', '30',
+      '--js-runtimes', 'nodejs',
+      '--extractor-args', 'youtube:player_client=mediaconnect',
       videoUrl,
     ], { timeout: 180000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(`下載失敗：${stderr || err.message}`));
