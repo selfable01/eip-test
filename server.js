@@ -3,14 +3,17 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const { execFile } = require('child_process');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GoogleAIFileManager, FileState } = require('@google/generative-ai/server');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const IS_VERCEL = !!process.env.VERCEL;
+const IS_WIN = process.platform === 'win32';
 
-// Only parse JSON for non-upload routes
+// Skip JSON parsing for upload route
 app.use((req, res, next) => {
   if (req.path === '/api/upload') return next();
   express.json({ limit: '10mb' })(req, res, next);
@@ -18,13 +21,57 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname), { redirect: false }));
 
-const TEMP_DIR = path.join(__dirname, 'temp');
-if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
+// Temp dir: /tmp on Vercel, ./temp locally
+const TEMP_DIR = IS_VERCEL ? '/tmp' : path.join(__dirname, 'temp');
+if (!IS_VERCEL && !fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
 const MODEL_NAME = 'gemini-2.0-flash-lite';
+
+// ── yt-dlp binary management ──
+
+const YTDLP_LOCAL = path.join(__dirname, 'yt-dlp.exe');
+const YTDLP_LINUX = '/tmp/yt-dlp';
+const YTDLP_DOWNLOAD_URL = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
+
+function getYtdlpPath() {
+  return IS_WIN ? YTDLP_LOCAL : YTDLP_LINUX;
+}
+
+function downloadFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    const follow = (u) => {
+      https.get(u, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return follow(res.headers.location);
+        }
+        if (res.statusCode !== 200) {
+          return reject(new Error(`下載失敗，狀態碼：${res.statusCode}`));
+        }
+        const file = fs.createWriteStream(dest);
+        res.pipe(file);
+        file.on('finish', () => {
+          file.close();
+          fs.chmodSync(dest, '755');
+          resolve();
+        });
+        file.on('error', reject);
+      }).on('error', reject);
+    };
+    follow(url);
+  });
+}
+
+async function ensureYtdlp() {
+  if (IS_WIN) return; // Use bundled yt-dlp.exe
+  if (fs.existsSync(YTDLP_LINUX)) return; // Already cached in /tmp
+
+  console.log('Downloading yt-dlp Linux binary...');
+  await downloadFile(YTDLP_DOWNLOAD_URL, YTDLP_LINUX);
+  console.log('yt-dlp downloaded successfully.');
+}
 
 // ── Helpers ──
 
@@ -48,7 +95,7 @@ function sse(res, event, data) {
 function downloadVideo(videoUrl) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(TEMP_DIR, `${Date.now()}.mp4`);
-    const ytdlpPath = path.join(__dirname, 'yt-dlp.exe');
+    const ytdlpPath = getYtdlpPath();
 
     execFile(ytdlpPath, [
       '-f', 'worst[ext=mp4]/worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst',
@@ -291,6 +338,10 @@ app.get('/api/generate', async (req, res) => {
   let localFilePath = null;
 
   try {
+    // Ensure yt-dlp binary is ready (downloads on Vercel cold start)
+    sse(res, 'status', { step: 1, message: '正在準備下載工具...' });
+    await ensureYtdlp();
+
     sse(res, 'status', { step: 1, message: '正在下載影片（480p）...' });
     localFilePath = await downloadVideo(videoUrl);
 
@@ -301,7 +352,7 @@ app.get('/api/generate', async (req, res) => {
     await runPipeline(res, geminiFile);
   } catch (err) {
     sse(res, 'error', {
-      message: '分析失敗：請確認影片中有清楚的產品展示。',
+      message: '分析失敗：請確認影片網址正確且影片中有清楚的產品展示。',
       detail: err.message,
     });
   } finally {
@@ -365,6 +416,12 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`3ZeBra Auto-Mirror running at http://localhost:${PORT}`);
-});
+// Local dev
+if (!IS_VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`3ZeBra Auto-Mirror running at http://localhost:${PORT}`);
+  });
+}
+
+// Export for Vercel
+module.exports = app;
