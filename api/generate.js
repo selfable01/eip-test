@@ -1,6 +1,6 @@
 const {
   ensureYtdlp, isSupportedUrl, sse, sseHeaders, setCors,
-  downloadVideo, uploadToGemini, cleanupFile, runPipeline,
+  downloadVideo, uploadToGemini, cleanupFile, runAnalysis,
 } = require('../lib/pipeline');
 
 module.exports = async function handler(req, res) {
@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
     const geminiFile = await uploadToGemini(localFilePath);
     sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
 
-    await runPipeline(res, geminiFile);
+    await runAnalysis(res, geminiFile);
   } catch (err) {
     sse(res, 'error', {
       message: '分析失敗：請確認影片網址正確且影片中有清楚的產品展示。',

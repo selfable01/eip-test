@@ -1,5 +1,5 @@
 const {
-  sse, sseHeaders, setCors, runPipeline,
+  sse, sseHeaders, setCors, runAnalysis,
 } = require('../lib/pipeline');
 
 // Browser sends Gemini file URI + mimeType after uploading directly to Gemini
@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
 
     const geminiFile = { uri: fileUri, mimeType: mimeType || 'video/mp4' };
 
-    await runPipeline(res, geminiFile);
+    await runAnalysis(res, geminiFile);
   } catch (err) {
     sse(res, 'error', {
       message: '分析失敗：請確認影片中有清楚的產品展示。',

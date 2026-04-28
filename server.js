@@ -261,35 +261,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Shared AI pipeline ──
+// ── Analysis (menu only) ──
 
-async function runPipeline(res, geminiFile) {
+async function runLocalAnalysis(res, geminiFile) {
   sse(res, 'status', { step: 3, message: 'AI 偵探正在分析影片...' });
 
-  const analysisModel = genAI.getGenerativeModel({
+  const model = genAI.getGenerativeModel({
     model: MODEL_NAME,
-    generationConfig: {
-      temperature: 0.8,
-      responseMimeType: 'application/json',
-    },
+    generationConfig: { temperature: 0.8, responseMimeType: 'application/json' },
   });
 
-  const analysisResult = await analysisModel.generateContent([
+  const result = await model.generateContent([
     DETECTIVE_PROMPT,
-    {
-      fileData: {
-        mimeType: geminiFile.mimeType,
-        fileUri: geminiFile.uri,
-      },
-    },
+    { fileData: { mimeType: geminiFile.mimeType, fileUri: geminiFile.uri } },
   ]);
 
-  const analysisText = analysisResult.response.text();
+  const text = result.response.text();
   let menu;
-  try {
-    menu = JSON.parse(analysisText);
-  } catch {
-    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。', raw: analysisText.slice(0, 500) });
+  try { menu = JSON.parse(text); } catch {
+    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
     return;
   }
 
@@ -301,53 +291,7 @@ async function runPipeline(res, geminiFile) {
   }
 
   sse(res, 'menu', menu);
-  sse(res, 'status', { step: 4, message: '正在生成 30 秒廣告腳本...' });
-
-  const scriptModel = genAI.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: 'application/json',
-    },
-  });
-
-  const scriptPrompt = `${SCRIPT_PROMPT}
-
-辨識出的產品：${menu.product_name || '未知'}
-品牌：${menu.brand || '未知'}
-目標受眾：${menu.target_audience || '30-55 歲'}
-核心賣點：${menu.magic_moment || '無'}
-
-10/10/10 選單：
-鉤子：
-${(menu.hooks || []).map(h => `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`).join('\n')}
-
-痛點：
-${(menu.pains || []).map(p => `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`).join('\n')}
-
-展示：
-${(menu.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`).join('\n')}
-
-請挑選最強的角度，組裝一個 25-35 秒的廣告腳本。`;
-
-  const scriptResult = await scriptModel.generateContent(scriptPrompt);
-  const scriptText = scriptResult.response.text();
-
-  let script;
-  try {
-    script = JSON.parse(scriptText);
-  } catch {
-    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。', raw: scriptText.slice(0, 500) });
-    return;
-  }
-
-  if (!Array.isArray(script.script) || script.script.length === 0) {
-    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
-    return;
-  }
-
-  sse(res, 'script', script);
-  sse(res, 'done', { message: '完成' });
+  sse(res, 'done', { message: '分析完成' });
 }
 
 // ── Route 1: URL-based (YouTube / Facebook / Instagram) ──
@@ -355,70 +299,89 @@ ${(menu.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voice
 app.get('/api/generate', async (req, res) => {
   const videoUrl = req.query.url;
 
-  if (!videoUrl) {
-    return res.status(400).json({ error: '缺少 ?url= 參數' });
-  }
-
-  if (!isSupportedUrl(videoUrl)) {
-    return res.status(400).json({ error: '不支援的網址。請使用 YouTube、Facebook 或 Instagram 連結。' });
-  }
+  if (!videoUrl) return res.status(400).json({ error: '缺少 ?url= 參數' });
+  if (!isSupportedUrl(videoUrl)) return res.status(400).json({ error: '不支援的網址。' });
 
   sseHeaders(res);
-
   let localFilePath = null;
 
   try {
-    // Ensure yt-dlp binary is ready (downloads on Vercel cold start)
     sse(res, 'status', { step: 1, message: '正在準備下載工具...' });
     await ensureYtdlp();
-
     sse(res, 'status', { step: 1, message: '正在下載影片（480p）...' });
     localFilePath = await downloadVideo(videoUrl);
-
     sse(res, 'status', { step: 2, message: '正在上傳至 Gemini...' });
     const geminiFile = await uploadToGemini(localFilePath);
-    sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
-
-    await runPipeline(res, geminiFile);
+    await runLocalAnalysis(res, geminiFile);
   } catch (err) {
-    sse(res, 'error', {
-      message: '分析失敗：請確認影片網址正確且影片中有清楚的產品展示。',
-      detail: err.message,
-    });
+    sse(res, 'error', { message: '分析失敗：請確認影片網址正確。', detail: err.message });
   } finally {
     if (localFilePath) cleanupFile(localFilePath);
     res.end();
   }
 });
 
-// ── Route 2: Upload config (returns API key for direct Gemini upload) ──
+// ── Route 2: Upload config ──
 
 app.get('/api/upload-config', (req, res) => {
   res.json({ apiKey: process.env.GEMINI_API_KEY });
 });
 
-// ── Route 3: Analyze uploaded file (receives Gemini file URI from browser) ──
+// ── Route 3: Analyze uploaded file ──
 
 app.post('/api/upload', async (req, res) => {
   const { fileUri, mimeType } = req.body || {};
+  if (!fileUri) return res.status(400).json({ error: 'Missing fileUri' });
 
-  if (!fileUri) {
-    return res.status(400).json({ error: 'Missing fileUri' });
+  sseHeaders(res);
+  try {
+    sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
+    await runLocalAnalysis(res, { uri: fileUri, mimeType: mimeType || 'video/mp4' });
+  } catch (err) {
+    sse(res, 'error', { message: '分析失敗。', detail: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── Route 4: Assemble script from user selections ──
+
+app.post('/api/assemble', async (req, res) => {
+  const body = req.body;
+  if (!body || (!body.hooks?.length && !body.pains?.length && !body.shows?.length)) {
+    return res.status(400).json({ error: '請至少選擇一個項目' });
   }
 
   sseHeaders(res);
-
   try {
-    sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
+    sse(res, 'status', { message: '正在組裝最終腳本...' });
 
-    const geminiFile = { uri: fileUri, mimeType: mimeType || 'video/mp4' };
-
-    await runPipeline(res, geminiFile);
-  } catch (err) {
-    sse(res, 'error', {
-      message: '分析失敗：請確認影片中有清楚的產品展示。',
-      detail: err.message,
+    const model = genAI.getGenerativeModel({
+      model: MODEL_NAME,
+      generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
     });
+
+    const hooksText = (body.hooks || []).map(h => `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`).join('\n');
+    const painsText = (body.pains || []).map(p => `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`).join('\n');
+    const showsText = (body.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`).join('\n');
+
+    const prompt = `${SCRIPT_PROMPT}\n\n辨識出的產品：${body.productName || '未知'}\n品牌：${body.brand || '未知'}\n目標受眾：${body.targetAudience || '30-55 歲'}\n核心賣點：${body.magicMoment || '無'}\n\n用戶選擇的鉤子：\n${hooksText || '未選擇'}\n\n用戶選擇的痛點：\n${painsText || '未選擇'}\n\n用戶選擇的展示：\n${showsText || '未選擇'}\n\n請根據用戶選擇的素材，組裝一個 25-35 秒的廣告腳本。`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    let script;
+    try { script = JSON.parse(text); } catch {
+      sse(res, 'error', { message: '腳本生成失敗，請重試。' });
+      return;
+    }
+    if (!Array.isArray(script.script) || script.script.length === 0) {
+      sse(res, 'error', { message: '腳本生成失敗，請重試。' });
+      return;
+    }
+    sse(res, 'script', script);
+    sse(res, 'done', { message: '完成' });
+  } catch (err) {
+    sse(res, 'error', { message: '腳本生成失敗。', detail: err.message });
   } finally {
     res.end();
   }

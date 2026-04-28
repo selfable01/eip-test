@@ -293,8 +293,62 @@
       border-radius: 10px;
       padding: 1rem 1.15rem;
       transition: all 0.2s;
+      cursor: pointer;
+      user-select: none;
     }
     .option-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .option-card.selected { border-color: var(--accent); background: rgba(124,92,252,0.08); }
+    .option-card .check-indicator {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 1.5px solid var(--border);
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .option-card.selected .check-indicator {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .option-card.selected .check-indicator::after {
+      content: '';
+      position: absolute;
+      left: 5px; top: 2px;
+      width: 6px; height: 9px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .generate-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      margin-top: 1.5rem;
+      position: sticky;
+      bottom: 1rem;
+    }
+    .sel-count { font-size: 0.82rem; color: var(--text2); }
+    .sel-count strong { color: var(--accent2); }
+
+    .script-loader { display: none; text-align: center; padding: 2rem 0; }
+    .script-loader.visible { display: block; }
+    .script-loader .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .script-loader p { color: var(--text2); font-size: 0.85rem; }
     .option-id {
       font-size: 0.7rem;
       font-weight: 700;
@@ -457,9 +511,26 @@
         <div class="option-list" id="showsList"></div>
       </div>
 
-      <div class="script-section">
+      <!-- Selection bar -->
+      <div class="generate-bar">
+        <div class="sel-count">
+          已選：<strong id="selH">0</strong> 鉤子、
+          <strong id="selP">0</strong> 痛點、
+          <strong id="selS">0</strong> 展示
+        </div>
+        <button class="btn" id="assembleBtn" onclick="assembleScript()">組裝廣告腳本</button>
+      </div>
+
+      <!-- Script loader -->
+      <div class="script-loader" id="scriptLoader">
+        <div class="spinner"></div>
+        <p>正在根據您的選擇組裝腳本...</p>
+      </div>
+
+      <!-- Script result (hidden until generated) -->
+      <div class="script-section" id="scriptSection" style="display:none;">
         <h2 class="section-title">30 秒製作腳本</h2>
-        <p class="section-sub">可直接投入拍攝的視覺-音訊製作表。</p>
+        <p class="section-sub">根據您選擇的素材，量身打造的廣告腳本。</p>
 
         <div id="durationBadge" class="duration-badge" style="display:none;"></div>
 
@@ -487,6 +558,8 @@
 
 <script>
   let selectedFile = null;
+  let menuData = null;
+  let selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
 
   // ── Tab switching ──
   function switchTab(tab) {
@@ -685,13 +758,9 @@
             setStepState(step, 'active');
           }
           else if (eventType === 'menu') {
-            setStepState(3, 'done');
-            setStepState(4, 'active');
+            for (let i = 1; i <= 3; i++) setStepState(i, 'done');
+            menuData = payload;
             renderMenu(payload);
-          }
-          else if (eventType === 'script') {
-            setStepState(4, 'done');
-            renderScript(payload);
             document.getElementById('resultsArea').classList.add('visible');
             document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
           }
@@ -703,7 +772,7 @@
             showError(payload.message || '發生錯誤');
           }
           else if (eventType === 'done') {
-            for (let i = 1; i <= 4; i++) setStepState(i, 'done');
+            // analysis done
           }
         }
       }
@@ -725,21 +794,103 @@
       </div>
     `).join('');
 
-    renderCards('hooksList', data.hooks || []);
-    renderCards('painsList', data.pains || []);
-    renderCards('showsList', data.shows || []);
+    selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
+    renderCards('hooksList', data.hooks || [], 'hooks');
+    renderCards('painsList', data.pains || [], 'pains');
+    renderCards('showsList', data.shows || [], 'shows');
+    updateSelCount();
+    document.getElementById('scriptSection').style.display = 'none';
   }
 
-  function renderCards(containerId, items) {
+  function renderCards(containerId, items, category) {
     const container = document.getElementById(containerId);
-    container.innerHTML = items.map(item => `
-      <div class="option-card">
-        <div class="option-id">${escHtml(item.id)}</div>
+    container.innerHTML = '';
+    items.forEach((item, i) => {
+      const card = document.createElement('div');
+      card.className = 'option-card';
+      card.innerHTML = `
+        <div class="option-id"><span class="check-indicator"></span>${escHtml(item.id)}</div>
         <div class="option-field"><strong>畫面內容：</strong>${escHtml(item.visual)}</div>
         <div class="option-field"><strong>口播內容：</strong>${escHtml(item.voiceover)}</div>
-        <div class="option-field"><strong>字卡設計：</strong>${escHtml(item.text_overlay)}</div>
-      </div>
-    `).join('');
+        <div class="option-field"><strong>字卡設計：</strong>${escHtml(item.text_overlay)}</div>`;
+      card.addEventListener('click', () => {
+        card.classList.toggle('selected');
+        if (selections[category].has(i)) selections[category].delete(i);
+        else selections[category].add(i);
+        updateSelCount();
+      });
+      container.appendChild(card);
+    });
+  }
+
+  function updateSelCount() {
+    document.getElementById('selH').textContent = selections.hooks.size;
+    document.getElementById('selP').textContent = selections.pains.size;
+    document.getElementById('selS').textContent = selections.shows.size;
+  }
+
+  // ── Assemble script from user selections ──
+  async function assembleScript() {
+    const total = selections.hooks.size + selections.pains.size + selections.shows.size;
+    if (total === 0) { showError('請至少選擇一個項目。'); return; }
+
+    document.getElementById('scriptSection').style.display = 'none';
+    document.getElementById('scriptLoader').classList.add('visible');
+    document.getElementById('assembleBtn').disabled = true;
+
+    const body = {
+      hooks: [...selections.hooks].map(i => menuData.hooks[i]),
+      pains: [...selections.pains].map(i => menuData.pains[i]),
+      shows: [...selections.shows].map(i => menuData.shows[i]),
+      productName: menuData.product_name,
+      brand: menuData.brand,
+      targetAudience: menuData.target_audience,
+      magicMoment: menuData.magic_moment,
+    };
+
+    try {
+      const res = await fetch('/api/assemble', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      await handleAssembleSSE(res);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      document.getElementById('scriptLoader').classList.remove('visible');
+      document.getElementById('assembleBtn').disabled = false;
+    }
+  }
+
+  async function handleAssembleSSE(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const payload = JSON.parse(line.slice(6));
+          if (eventType === 'script') {
+            renderScript(payload);
+            document.getElementById('scriptSection').style.display = 'block';
+            document.getElementById('scriptSection').scrollIntoView({ behavior: 'smooth' });
+          } else if (eventType === 'error') {
+            showError(payload.message || '發生錯誤');
+          }
+        }
+      }
+    }
   }
 
   function renderScript(data) {
@@ -779,8 +930,12 @@
     document.getElementById('resultsArea').classList.remove('visible');
     document.getElementById('errorMsg').classList.remove('visible');
     document.getElementById('fileName').classList.remove('visible');
+    document.getElementById('scriptSection').style.display = 'none';
+    document.getElementById('scriptLoader').classList.remove('visible');
     document.getElementById('uploadBtn').disabled = true;
     selectedFile = null;
+    menuData = null;
+    selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
     fileInput.value = '';
     for (let i = 1; i <= 4; i++) setStepState(i, '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
