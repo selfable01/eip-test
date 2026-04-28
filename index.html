@@ -558,8 +558,29 @@
         </div>
       </div>
 
+      <!-- Video Breakdown -->
+      <div id="videoBreakdown" style="display:none; margin-bottom: 2.5rem;">
+        <h2 class="section-title">影片結構拆解</h2>
+        <p class="section-sub">AI 分析這支影片實際使用的鉤子、痛點、展示手法。</p>
+
+        <div class="intel-grid">
+          <div class="intel-card intel-card-full">
+            <h3>影片鉤子（Hook）— 如何吸引注意力</h3>
+            <div id="videoHookText" class="intel-text"></div>
+          </div>
+          <div class="intel-card intel-card-full">
+            <h3>影片痛點（Pain）— 如何揭露問題</h3>
+            <div id="videoPainText" class="intel-text"></div>
+          </div>
+          <div class="intel-card intel-card-full">
+            <h3>影片展示（Show）— 如何展示解決方案</h3>
+            <div id="videoShowText" class="intel-text"></div>
+          </div>
+        </div>
+      </div>
+
       <h2 class="section-title">10 / 10 / 10 廣告選單</h2>
-      <p class="section-sub">AI 從影片中提取的創意積木。點擊選擇你喜歡的項目。</p>
+      <p class="section-sub">受此影片啟發，AI 生成的全新創意積木。點擊選擇你喜歡的項目。</p>
 
       <div class="grid-block">
         <h3>影片鉤子（H1-H10）</h3>
@@ -894,6 +915,15 @@
       transcriptBox.innerHTML = '<div style="color:var(--text2)">無法提取逐字稿</div>';
     }
 
+    // Video Breakdown
+    const breakdown = document.getElementById('videoBreakdown');
+    if (data.video_hook || data.video_pain || data.video_show) {
+      breakdown.style.display = 'block';
+      document.getElementById('videoHookText').textContent = data.video_hook || '無';
+      document.getElementById('videoPainText').textContent = data.video_pain || '無';
+      document.getElementById('videoShowText').textContent = data.video_show || '無';
+    }
+
     // 10/10/10 cards
     selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
     renderCards('hooksList', data.hooks || [], 'hooks');
@@ -1034,6 +1064,7 @@
     document.getElementById('scriptSection').style.display = 'none';
     document.getElementById('scriptLoader').classList.remove('visible');
     document.getElementById('intelDashboard').style.display = 'none';
+    document.getElementById('videoBreakdown').style.display = 'none';
     document.getElementById('uploadBtn').disabled = true;
     selectedFile = null;
     menuData = null;
