@@ -28,7 +28,7 @@ if (!IS_VERCEL && !fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
-const MODEL_NAME = 'gemini-3.1-pro-preview';
+const MODEL_NAME = 'gemini-2.5-flash';
 
 // ── yt-dlp binary management ──
 
