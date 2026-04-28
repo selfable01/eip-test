@@ -1,0 +1,13 @@
+{
+  "name": "3zebra-timed-context-engine",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

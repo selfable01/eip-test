@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3ZeBra Auto-Mirror</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060608;
+      --surface: #0e0e12;
+      --surface2: #16161d;
+      --border: #1e1e2a;
+      --text: #e2e2e8;
+      --text2: #8888a0;
+      --accent: #7c5cfc;
+      --accent2: #a78bfa;
+      --green: #22c55e;
+      --red: #f43f5e;
+      --orange: #f59e0b;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    .header-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text2);
+    }
+
+    /* ---- MAIN ---- */
+    .main {
+      flex: 1;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    /* ---- INPUT AREA ---- */
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      text-align: center;
+    }
+    .input-card h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .input-card p {
+      color: var(--text2);
+      font-size: 0.88rem;
+      margin-bottom: 2rem;
+    }
+    .url-row {
+      display: flex;
+      gap: 0.75rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .url-row input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+      transition: border 0.2s;
+    }
+    .url-row input:focus { border-color: var(--accent); }
+    .url-row input::placeholder { color: var(--text2); }
+    .btn {
+      padding: 0.8rem 1.75rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--accent);
+      color: #fff;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #6a4ae0; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---- PROGRESS ---- */
+    .progress-area {
+      display: none;
+      margin-top: 2rem;
+    }
+    .progress-area.visible { display: block; }
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .p-step {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text2);
+      transition: color 0.3s;
+    }
+    .p-step.active { color: var(--accent2); }
+    .p-step.done { color: var(--green); }
+    .p-step.error { color: var(--red); }
+    .p-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .p-step.active .p-dot { background: var(--accent); animation: pulse 1.2s infinite; }
+    .p-step.done .p-dot { background: var(--green); }
+    .p-step.error .p-dot { background: var(--red); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ---- ERROR ---- */
+    .error-msg {
+      display: none;
+      background: rgba(244,63,94,0.08);
+      border: 1px solid rgba(244,63,94,0.25);
+      color: var(--red);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-size: 0.85rem;
+      margin-top: 1.5rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .error-msg.visible { display: block; }
+
+    /* ---- RESULTS ---- */
+    .results-area {
+      display: none;
+      margin-top: 2.5rem;
+      animation: fadeUp 0.4s ease;
+    }
+    .results-area.visible { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Product Info */
+    .product-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .product-field {
+      flex: 1;
+      min-width: 150px;
+    }
+    .product-field .label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text2);
+      margin-bottom: 0.3rem;
+      font-weight: 600;
+    }
+    .product-field .value {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    /* Section titles */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .section-sub {
+      font-size: 0.8rem;
+      color: var(--text2);
+      margin-bottom: 1.25rem;
+    }
+
+    /* 10/10/10 Grid */
+    .grid-block { margin-bottom: 2rem; }
+    .grid-block h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .option-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .option-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      transition: all 0.2s;
+    }
+    .option-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .option-id {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.4rem;
+    }
+    .option-field {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      margin-bottom: 0.25rem;
+    }
+    .option-field strong {
+      color: var(--text2);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Final Script Table */
+    .script-section { margin-top: 2.5rem; }
+    .duration-badge {
+      display: inline-block;
+      background: rgba(124,92,252,0.12);
+      color: var(--accent2);
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .final-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .final-table th {
+      background: var(--surface2);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text2);
+      padding: 0.85rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .final-table td {
+      padding: 1rem;
+      font-size: 0.84rem;
+      line-height: 1.55;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .final-table tr:last-child td { border-bottom: none; }
+    .final-table td:first-child {
+      font-weight: 600;
+      color: var(--accent2);
+      white-space: nowrap;
+      width: 90px;
+    }
+    .btn-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .btn-outline {
+      padding: 0.7rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent2);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--accent); }
+    .btn-copy { flex: 1; }
+
+    @media (max-width: 640px) {
+      .main { padding: 1.5rem 1rem; }
+      .input-card { padding: 1.5rem; }
+      .url-row { flex-direction: column; }
+      .product-banner { flex-direction: column; gap: 0.75rem; }
+      .final-table { font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">3<span>Ze</span>Bra</div>
+    <div class="header-tag">Auto-Mirror</div>
+  </div>
+
+  <div class="main">
+
+    <div class="input-card">
+      <h1>Zero-Input Ad Generator</h1>
+      <p>Paste a YouTube URL. The AI watches the video, identifies the product, and generates a complete 30-second ad script.</p>
+
+      <div class="url-row">
+        <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
+        <button class="btn" id="generateBtn" onclick="generate()">Generate</button>
+      </div>
+
+      <div class="progress-area" id="progressArea">
+        <div class="progress-steps">
+          <div class="p-step" id="ps1"><div class="p-dot"></div> Downloading video (480p)...</div>
+          <div class="p-step" id="ps2"><div class="p-dot"></div> Uploading to Gemini File API...</div>
+          <div class="p-step" id="ps3"><div class="p-dot"></div> AI Detective analyzing video...</div>
+          <div class="p-step" id="ps4"><div class="p-dot"></div> Generating 30-second ad script...</div>
+        </div>
+      </div>
+
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-area" id="resultsArea">
+
+      <!-- Product Info Banner -->
+      <div class="product-banner" id="productBanner"></div>
+
+      <!-- 10/10/10 Menu -->
+      <h2 class="section-title">10 / 10 / 10 Ad Menu</h2>
+      <p class="section-sub">AI-generated creative building blocks extracted from the video.</p>
+
+      <div class="grid-block">
+        <h3>Hooks (H1-H10)</h3>
+        <div class="option-list" id="hooksList"></div>
+      </div>
+
+      <div class="grid-block">
+        <h3>Pains (P1-P10)</h3>
+        <div class="option-list" id="painsList"></div>
+      </div>
+
+      <div class="grid-block">
+        <h3>Shows (S1-S10)</h3>
+        <div class="option-list" id="showsList"></div>
+      </div>
+
+      <!-- Final Script -->
+      <div class="script-section">
+        <h2 class="section-title">30-Second Production Script</h2>
+        <p class="section-sub">Ready-to-shoot visual-audio production table.</p>
+
+        <div id="durationBadge" class="duration-badge" style="display:none;"></div>
+
+        <table class="final-table" id="finalTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Visual</th>
+              <th>Voiceover</th>
+              <th>Text Overlay</th>
+            </tr>
+          </thead>
+          <tbody id="finalBody"></tbody>
+        </table>
+
+        <div class="btn-bar">
+          <button class="btn-outline" onclick="resetAll()">Start Over</button>
+          <button class="btn btn-copy" onclick="copyTable()">Copy Script to Clipboard</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+<script>
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  function setStepState(stepNum, state) {
+    const el = document.getElementById('ps' + stepNum);
+    el.classList.remove('active', 'done', 'error');
+    if (state) el.classList.add(state);
+  }
+
+  async function generate() {
+    const url = document.getElementById('videoUrl').value.trim();
+    if (!url) return;
+
+    // Reset UI
+    document.getElementById('errorMsg').classList.remove('visible');
+    document.getElementById('resultsArea').classList.remove('visible');
+    document.getElementById('progressArea').classList.add('visible');
+    document.getElementById('generateBtn').disabled = true;
+
+    for (let i = 1; i <= 4; i++) setStepState(i, '');
+    setStepState(1, 'active');
+
+    try {
+      const res = await fetch('/api/generate?url=' + encodeURIComponent(url));
+      await handleSSE(res);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+    }
+  }
+
+  async function handleSSE(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const payload = JSON.parse(line.slice(6));
+
+          if (eventType === 'status') {
+            const step = payload.step || 1;
+            // Mark previous steps done
+            for (let i = 1; i < step; i++) setStepState(i, 'done');
+            setStepState(step, 'active');
+          }
+
+          else if (eventType === 'menu') {
+            setStepState(3, 'done');
+            setStepState(4, 'active');
+            renderMenu(payload);
+          }
+
+          else if (eventType === 'script') {
+            setStepState(4, 'done');
+            renderScript(payload);
+            document.getElementById('resultsArea').classList.add('visible');
+            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
+          }
+
+          else if (eventType === 'error') {
+            for (let i = 1; i <= 4; i++) {
+              const el = document.getElementById('ps' + i);
+              if (el.classList.contains('active')) setStepState(i, 'error');
+            }
+            showError(payload.message || 'An error occurred');
+          }
+
+          else if (eventType === 'done') {
+            for (let i = 1; i <= 4; i++) setStepState(i, 'done');
+          }
+        }
+      }
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function renderMenu(data) {
+    // Product banner
+    const banner = document.getElementById('productBanner');
+    banner.innerHTML = [
+      { label: 'Product', value: data.product_name },
+      { label: 'Brand', value: data.brand },
+      { label: 'Audience', value: data.target_audience },
+      { label: 'Magic Moment', value: data.magic_moment },
+    ].map(f => `
+      <div class="product-field">
+        <div class="label">${escHtml(f.label)}</div>
+        <div class="value">${escHtml(f.value || 'N/A')}</div>
+      </div>
+    `).join('');
+
+    renderCards('hooksList', data.hooks || []);
+    renderCards('painsList', data.pains || []);
+    renderCards('showsList', data.shows || []);
+  }
+
+  function renderCards(containerId, items) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = items.map(item => `
+      <div class="option-card">
+        <div class="option-id">${escHtml(item.id)}</div>
+        <div class="option-field"><strong>Visual: </strong>${escHtml(item.visual)}</div>
+        <div class="option-field"><strong>Voiceover: </strong>${escHtml(item.voiceover)}</div>
+        <div class="option-field"><strong>Text Overlay: </strong>${escHtml(item.text_overlay)}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderScript(data) {
+    const badge = document.getElementById('durationBadge');
+    if (data.total_duration) {
+      badge.textContent = 'Duration: ' + data.total_duration;
+      badge.style.display = 'inline-block';
+    }
+
+    const tbody = document.getElementById('finalBody');
+    tbody.innerHTML = (data.script || []).map(row => `
+      <tr>
+        <td>${escHtml(row.time)}</td>
+        <td>${escHtml(row.visual)}</td>
+        <td>${escHtml(row.voiceover)}</td>
+        <td>${escHtml(row.text_overlay)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function copyTable() {
+    const table = document.getElementById('finalTable');
+    const rows = [...table.querySelectorAll('tr')];
+    const text = rows.map(r =>
+      [...r.querySelectorAll('th, td')].map(c => c.textContent.trim()).join('\t')
+    ).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+
+  function resetAll() {
+    document.getElementById('videoUrl').value = '';
+    document.getElementById('progressArea').classList.remove('visible');
+    document.getElementById('resultsArea').classList.remove('visible');
+    document.getElementById('errorMsg').classList.remove('visible');
+    for (let i = 1; i <= 4; i++) setStepState(i, '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Enter key triggers generate
+  document.getElementById('videoUrl').addEventListener('keydown', e => {
+    if (e.key === 'Enter') generate();
+  });
+</script>
+
+</body>
+</html>
