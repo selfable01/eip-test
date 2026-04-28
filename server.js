@@ -100,9 +100,14 @@ function getCookiesPath() {
 function ensureCookies() {
   const cookiesPath = getCookiesPath();
   if (fs.existsSync(cookiesPath)) return;
-  const cookies = process.env.COOKIES;
-  if (cookies) {
-    fs.writeFileSync(cookiesPath, cookies);
+  const header = '# Netscape HTTP Cookie File\n';
+  const parts = [
+    process.env.YT_COOKIES || '',
+    process.env.FB_COOKIES || '',
+    process.env.IG_COOKIES || '',
+  ].filter(Boolean);
+  if (parts.length > 0) {
+    fs.writeFileSync(cookiesPath, header + parts.join('\n'));
   }
 }
 
