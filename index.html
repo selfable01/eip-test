@@ -584,14 +584,71 @@
   async function generateFromFile() {
     if (!selectedFile) return;
 
-    startProgress('正在上傳影片檔案...');
+    startProgress('正在上傳影片至 Gemini...');
     document.getElementById('uploadBtn').disabled = true;
 
     try {
+      // Step 1: Get API key
+      const configRes = await fetch('/api/upload-config');
+      const { apiKey } = await configRes.json();
+
+      // Step 2: Upload directly to Gemini File API from browser
+      setStepState(1, 'active');
+      const geminiUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
+
+      // Start resumable upload
+      const startRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': selectedFile.size,
+          'X-Goog-Upload-Header-Content-Type': 'video/mp4',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file: { displayName: selectedFile.name } }),
+      });
+
+      const uploadUrl = startRes.headers.get('X-Goog-Upload-URL');
+      if (!uploadUrl) throw new Error('無法取得上傳網址');
+
+      // Upload the file
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'X-Goog-Upload-Command': 'upload, finalize',
+          'X-Goog-Upload-Offset': '0',
+          'Content-Type': 'video/mp4',
+        },
+        body: selectedFile,
+      });
+
+      const uploadData = await uploadRes.json();
+      const fileUri = uploadData.file?.uri;
+      const fileName = uploadData.file?.name;
+      if (!fileUri) throw new Error('上傳失敗，未取得檔案 URI');
+
+      // Step 3: Poll until file is ACTIVE
+      setStepState(1, 'done');
+      setStepState(2, 'active');
+      let fileState = uploadData.file?.state;
+      while (fileState === 'PROCESSING') {
+        await new Promise(r => setTimeout(r, 3000));
+        const checkRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`
+        );
+        const checkData = await checkRes.json();
+        fileState = checkData.state;
+      }
+
+      if (fileState === 'FAILED') throw new Error('Gemini 檔案處理失敗');
+
+      // Step 4: Send file reference to our server for analysis
+      setStepState(2, 'done');
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: selectedFile,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUri, mimeType: 'video/mp4' }),
       });
       await handleSSE(res);
     } catch (err) {

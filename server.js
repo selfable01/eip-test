@@ -386,54 +386,37 @@ app.get('/api/generate', async (req, res) => {
   }
 });
 
-// ── Route 2: Direct MP4 upload ──
+// ── Route 2: Upload config (returns API key for direct Gemini upload) ──
+
+app.get('/api/upload-config', (req, res) => {
+  res.json({ apiKey: process.env.GEMINI_API_KEY });
+});
+
+// ── Route 3: Analyze uploaded file (receives Gemini file URI from browser) ──
 
 app.post('/api/upload', async (req, res) => {
-  const chunks = [];
-  let totalSize = 0;
-  const MAX_SIZE = 200 * 1024 * 1024; // 200MB
+  const { fileUri, mimeType } = req.body || {};
 
-  req.on('data', chunk => {
-    totalSize += chunk.length;
-    if (totalSize <= MAX_SIZE) {
-      chunks.push(chunk);
-    }
-  });
+  if (!fileUri) {
+    return res.status(400).json({ error: 'Missing fileUri' });
+  }
 
-  req.on('end', async () => {
-    if (totalSize > MAX_SIZE) {
-      return res.status(413).json({ error: '檔案過大，請上傳 200MB 以內的影片' });
-    }
+  sseHeaders(res);
 
-    const buffer = Buffer.concat(chunks);
+  try {
+    sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
 
-    if (buffer.length === 0) {
-      return res.status(400).json({ error: '未收到檔案資料' });
-    }
+    const geminiFile = { uri: fileUri, mimeType: mimeType || 'video/mp4' };
 
-    sseHeaders(res);
-
-    const localFilePath = path.join(TEMP_DIR, `upload_${Date.now()}.mp4`);
-
-    try {
-      sse(res, 'status', { step: 1, message: '正在儲存上傳的影片...' });
-      fs.writeFileSync(localFilePath, buffer);
-
-      sse(res, 'status', { step: 2, message: '正在上傳至 Gemini...' });
-      const geminiFile = await uploadToGemini(localFilePath);
-      sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
-
-      await runPipeline(res, geminiFile);
-    } catch (err) {
-      sse(res, 'error', {
-        message: '分析失敗：請確認影片中有清楚的產品展示。',
-        detail: err.message,
-      });
-    } finally {
-      cleanupFile(localFilePath);
-      res.end();
-    }
-  });
+    await runPipeline(res, geminiFile);
+  } catch (err) {
+    sse(res, 'error', {
+      message: '分析失敗：請確認影片中有清楚的產品展示。',
+      detail: err.message,
+    });
+  } finally {
+    res.end();
+  }
 });
 
 // ── Serve index.html ──
