@@ -405,6 +405,23 @@
       .intel-grid { grid-template-columns: 1fr; }
     }
 
+    .intel-details { }
+    .intel-summary {
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent2);
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      list-style: none;
+      transition: all 0.2s;
+    }
+    .intel-summary:hover { border-color: var(--accent); }
+    .intel-summary::before { content: '▶ '; font-size: 0.7rem; }
+    details[open] .intel-summary::before { content: '▼ '; }
+
     .script-section { margin-top: 2.5rem; }
     .duration-badge {
       display: inline-block;
@@ -532,52 +549,57 @@
 
       <div class="product-banner" id="productBanner"></div>
 
-      <!-- Intelligence Dashboard -->
-      <div class="intel-dashboard" id="intelDashboard" style="display:none;">
-        <h2 class="section-title">影片情報儀表板</h2>
-        <p class="section-sub">AI 從影片中提取的完整分析。</p>
+      <!-- Video Hook Analysis -->
+      <div class="intel-card intel-card-full" id="hookAnalysisCard" style="display:none; margin-bottom:1.5rem;">
+        <h3>影片鉤子</h3>
+        <div id="hookAnalysisText" class="intel-text"></div>
+      </div>
 
-        <div class="intel-grid">
-          <!-- Audience Profile -->
+      <!-- Marketing Insights -->
+      <div class="intel-card intel-card-full" id="marketingCard" style="display:none; margin-bottom:1.5rem;">
+        <h3>行銷重點</h3>
+        <div id="marketingText" class="intel-text"></div>
+      </div>
+
+      <!-- Video Storyboard Table -->
+      <div id="storyboardSection" style="display:none; margin-bottom:1.5rem;">
+        <div class="intel-card intel-card-full">
+          <h3>分鏡設計</h3>
+          <div style="overflow-x:auto;">
+            <table class="final-table" id="storyboardTable">
+              <thead>
+                <tr>
+                  <th>時間軸</th>
+                  <th>畫面內容</th>
+                  <th>口播內容</th>
+                  <th>字卡</th>
+                  <th>精彩分鏡</th>
+                </tr>
+              </thead>
+              <tbody id="storyboardBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Intelligence Details (collapsible) -->
+      <details class="intel-details" id="intelDetails" style="display:none; margin-bottom:2rem;">
+        <summary class="intel-summary">更多情報：受眾分析 / 視覺風格 / 逐字稿</summary>
+        <div class="intel-grid" style="margin-top:1rem;">
           <div class="intel-card">
             <h3>受眾分析</h3>
             <div id="audienceProfile"></div>
           </div>
-
-          <!-- Visual Description -->
           <div class="intel-card">
             <h3>視覺風格描述</h3>
             <div id="visualDesc" class="intel-text"></div>
           </div>
-
-          <!-- Transcript -->
           <div class="intel-card intel-card-full">
             <h3>影片逐字稿</h3>
             <div id="transcriptBox" class="transcript-scroll"></div>
           </div>
         </div>
-      </div>
-
-      <!-- Video Breakdown -->
-      <div id="videoBreakdown" style="display:none; margin-bottom: 2.5rem;">
-        <h2 class="section-title">影片結構拆解</h2>
-        <p class="section-sub">AI 分析這支影片實際使用的鉤子、痛點、展示手法。</p>
-
-        <div class="intel-grid">
-          <div class="intel-card intel-card-full">
-            <h3>影片鉤子（Hook）— 如何吸引注意力</h3>
-            <div id="videoHookText" class="intel-text"></div>
-          </div>
-          <div class="intel-card intel-card-full">
-            <h3>影片痛點（Pain）— 如何揭露問題</h3>
-            <div id="videoPainText" class="intel-text"></div>
-          </div>
-          <div class="intel-card intel-card-full">
-            <h3>影片展示（Show）— 如何展示解決方案</h3>
-            <div id="videoShowText" class="intel-text"></div>
-          </div>
-        </div>
-      </div>
+      </details>
 
       <h2 class="section-title">10 / 10 / 10 廣告選單</h2>
       <p class="section-sub">受此影片啟發，AI 生成的全新創意積木。點擊選擇你喜歡的項目。</p>
@@ -881,11 +903,37 @@
       </div>
     `).join('');
 
-    // Intelligence Dashboard
-    const dashboard = document.getElementById('intelDashboard');
-    dashboard.style.display = 'block';
+    // Video Hook Analysis
+    if (data.video_hook_analysis) {
+      const card = document.getElementById('hookAnalysisCard');
+      card.style.display = 'block';
+      document.getElementById('hookAnalysisText').textContent = data.video_hook_analysis;
+    }
 
-    // Audience profile
+    // Marketing Insights
+    if (data.marketing_insights) {
+      const card = document.getElementById('marketingCard');
+      card.style.display = 'block';
+      document.getElementById('marketingText').textContent = data.marketing_insights;
+    }
+
+    // Storyboard Table
+    if (Array.isArray(data.storyboard) && data.storyboard.length > 0) {
+      document.getElementById('storyboardSection').style.display = 'block';
+      document.getElementById('storyboardBody').innerHTML = data.storyboard.map(s => `
+        <tr>
+          <td>${escHtml(s.time || '')}</td>
+          <td>${escHtml(s.visual || '')}</td>
+          <td>${escHtml(s.voiceover || '')}</td>
+          <td>${escHtml(s.text_overlay || '')}</td>
+          <td>${escHtml(s.scene_label || '')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Intel Details (collapsible)
+    document.getElementById('intelDetails').style.display = 'block';
+
     document.getElementById('audienceProfile').innerHTML = [
       { label: '目標受眾', value: data.target_audience },
       { label: '年齡範圍', value: data.age_range },
@@ -899,10 +947,8 @@
       </div>
     `).join('');
 
-    // Visual description
     document.getElementById('visualDesc').textContent = data.visual_description || '無';
 
-    // Transcript
     const transcriptBox = document.getElementById('transcriptBox');
     if (Array.isArray(data.transcript) && data.transcript.length > 0) {
       transcriptBox.innerHTML = data.transcript.map(t => `
@@ -913,15 +959,6 @@
       `).join('');
     } else {
       transcriptBox.innerHTML = '<div style="color:var(--text2)">無法提取逐字稿</div>';
-    }
-
-    // Video Breakdown
-    const breakdown = document.getElementById('videoBreakdown');
-    if (data.video_hook || data.video_pain || data.video_show) {
-      breakdown.style.display = 'block';
-      document.getElementById('videoHookText').textContent = data.video_hook || '無';
-      document.getElementById('videoPainText').textContent = data.video_pain || '無';
-      document.getElementById('videoShowText').textContent = data.video_show || '無';
     }
 
     // 10/10/10 cards
@@ -1063,8 +1100,10 @@
     document.getElementById('fileName').classList.remove('visible');
     document.getElementById('scriptSection').style.display = 'none';
     document.getElementById('scriptLoader').classList.remove('visible');
-    document.getElementById('intelDashboard').style.display = 'none';
-    document.getElementById('videoBreakdown').style.display = 'none';
+    document.getElementById('hookAnalysisCard').style.display = 'none';
+    document.getElementById('marketingCard').style.display = 'none';
+    document.getElementById('storyboardSection').style.display = 'none';
+    document.getElementById('intelDetails').style.display = 'none';
     document.getElementById('uploadBtn').disabled = true;
     selectedFile = null;
     menuData = null;
