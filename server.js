@@ -10,7 +10,7 @@ const { GoogleAIFileManager, FileState } = require('@google/generative-ai/server
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname), { redirect: false }));
 
 const TEMP_DIR = path.join(__dirname, 'temp');
@@ -23,17 +23,20 @@ const MODEL_NAME = 'gemini-2.0-flash-lite';
 
 // ── Helpers ──
 
-function extractVideoId(url) {
+function isSupportedUrl(url) {
   try {
     const u = new URL(url);
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
-    if (u.hostname.includes('youtube.com')) {
-      const shortsMatch = u.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
-      if (shortsMatch) return shortsMatch[1];
-      return u.searchParams.get('v');
-    }
-  } catch { /* invalid url */ }
-  return null;
+    const host = u.hostname.replace('www.', '');
+    // YouTube
+    if (host === 'youtu.be' || host.includes('youtube.com')) return true;
+    // Facebook
+    if (host.includes('facebook.com') || host.includes('fb.watch') || host.includes('fb.com')) return true;
+    // Instagram
+    if (host.includes('instagram.com')) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 function sse(res, event, data) {
@@ -42,8 +45,7 @@ function sse(res, event, data) {
 
 function downloadVideo(videoUrl) {
   return new Promise((resolve, reject) => {
-    const videoId = extractVideoId(videoUrl) || Date.now().toString();
-    const outputPath = path.join(TEMP_DIR, `${videoId}.mp4`);
+    const outputPath = path.join(TEMP_DIR, `${Date.now()}.mp4`);
     const ytdlpPath = path.join(__dirname, 'yt-dlp.exe');
 
     execFile(ytdlpPath, [
@@ -54,9 +56,9 @@ function downloadVideo(videoUrl) {
       '--no-playlist',
       '--socket-timeout', '30',
       videoUrl,
-    ], { timeout: 120000 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error(`Download failed: ${stderr || err.message}`));
-      if (!fs.existsSync(outputPath)) return reject(new Error('Download completed but file not found'));
+    ], { timeout: 180000 }, (err, stdout, stderr) => {
+      if (err) return reject(new Error(`下載失敗：${stderr || err.message}`));
+      if (!fs.existsSync(outputPath)) return reject(new Error('下載完成但找不到檔案'));
       resolve(outputPath);
     });
   });
@@ -76,7 +78,7 @@ async function uploadToGemini(filePath) {
   }
 
   if (file.state === FileState.FAILED) {
-    throw new Error('Gemini file processing failed');
+    throw new Error('Gemini 檔案處理失敗');
   }
 
   return file;
@@ -85,7 +87,7 @@ async function uploadToGemini(filePath) {
 function cleanupFile(filePath) {
   try {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch { /* ignore cleanup errors */ }
+  } catch { /* ignore */ }
 }
 
 function sseHeaders(res) {
@@ -97,77 +99,79 @@ function sseHeaders(res) {
   });
 }
 
-// ── Prompts ──
+// ── Prompts (all output in Traditional Chinese) ──
 
-const DETECTIVE_PROMPT = `Watch and listen to this video carefully. You are the sole researcher — no user-provided description will be given.
+const DETECTIVE_PROMPT = `仔細觀看並聆聽這支影片。你是唯一的研究員——不會提供任何使用者描述。
 
-Identify:
-1. The product being sold
-2. Its brand name (if available)
-3. The target audience
-4. The "Magic Moment" (the primary benefit)
+請辨識：
+1. 正在銷售的產品
+2. 品牌名稱（如有）
+3. 目標受眾
+4. 「Magic Moment」（核心賣點）
 
-Based ONLY on your analysis of this video, generate a complete 10/10/10 Ad Menu in the high-energy 3ZeBra style.
+僅根據你對此影片的分析，以高能量 3ZeBra 風格生成完整的 10/10/10 廣告選單。
 
-Return the following JSON (no markdown fences):
+請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
-  "product_name": "identified product name",
-  "brand": "identified brand or 'Unknown'",
-  "target_audience": "identified target audience",
-  "magic_moment": "the primary benefit / transformation",
+  "product_name": "辨識出的產品名稱",
+  "brand": "辨識出的品牌名稱或「未知」",
+  "target_audience": "辨識出的目標受眾",
+  "magic_moment": "核心賣點 / 轉變",
   "hooks": [
-    { "id": "H1", "visual": "Camera angle, movement, specific on-screen action", "voiceover": "Exact opening line to say", "text_overlay": "Text shown on screen" }
+    { "id": "H1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的開場台詞", "text_overlay": "螢幕上顯示的文字" }
   ],
   "pains": [
-    { "id": "P1", "visual": "Camera angle, movement, specific on-screen action", "voiceover": "Exact pain-point line to say", "text_overlay": "Text shown on screen" }
+    { "id": "P1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的痛點台詞", "text_overlay": "螢幕上顯示的文字" }
   ],
   "shows": [
-    { "id": "S1", "visual": "Camera angle, movement, specific on-screen action", "voiceover": "Exact product-show line to say", "text_overlay": "Text shown on screen" }
+    { "id": "S1", "visual": "鏡頭角度、運動方式、具體畫面動作", "voiceover": "實際要說的產品展示台詞", "text_overlay": "螢幕上顯示的文字" }
   ]
 }
 
-Rules:
-- Exactly 10 items per category (H1-H10, P1-P10, S1-S10).
-- Each item MUST have all 3 fields: visual, voiceover, text_overlay.
-- "visual" describes camera angles, movements, scene setup, specific actions.
-- "voiceover" is the actual spoken line — conversational, warm, confident, real.
-- "text_overlay" is the on-screen text/graphics for this beat.
-- Every item must be unique — no repeats.
-- Target audience: 30-55 years old.
-- Brand tone (3ZeBra): warm, confident, benefit-first. Conversational and authentic.
-- NO false claims, NO medical/clinical terms, NO young internet slang.
-- Stay honest, practical, compliant.`;
+規則：
+- 每個類別恰好 10 個項目（H1-H10、P1-P10、S1-S10）。
+- 每個項目必須包含所有 3 個欄位：visual、voiceover、text_overlay。
+- 「visual」描述鏡頭角度、運動方式、場景設定、具體動作。
+- 「voiceover」是實際要說的台詞——口語化、溫暖、有自信、真實。
+- 「text_overlay」是該節拍中螢幕上顯示的文字/圖形。
+- 每個項目必須獨特——不可重複。
+- 目標受眾：30-55 歲。
+- 品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。口語化且真實。
+- 禁止虛假宣稱、禁止醫療/臨床術語、禁止年輕人網路用語。
+- 保持誠實、務實、合規。
+- 所有內容必須使用繁體中文。`;
 
-const SCRIPT_PROMPT = `You are a short-form ad editor assembling a final production script.
+const SCRIPT_PROMPT = `你是一位短影片廣告剪輯師，正在組裝最終的製作腳本。
 
-You will receive a product analysis and a 10/10/10 menu (hooks, pains, shows). Pick the STRONGEST angles and weave them into one seamless 30-second ad script.
+你會收到產品分析和 10/10/10 選單（鉤子、痛點、展示）。請挑選最強的角度，編織成一個流暢的 30 秒廣告腳本。
 
-Return the following JSON (no markdown fences):
+請回傳以下 JSON 格式（不要加 markdown 標記）：
 {
-  "product_name": "the product name",
+  "product_name": "產品名稱",
   "script": [
     {
       "time": "0:00-0:03",
-      "visual": "Detailed on-screen description",
-      "voiceover": "Exact spoken line",
-      "text_overlay": "On-screen text/graphics"
+      "visual": "詳細的畫面描述",
+      "voiceover": "實際的口播台詞",
+      "text_overlay": "螢幕上顯示的文字/圖形"
     }
   ],
-  "total_duration": "30 seconds"
+  "total_duration": "30 秒"
 }
 
-Rules:
-- Open with the strongest hook.
-- Build tension with the best pain point(s) in the middle.
-- Close with the best product show / CTA.
-- The script must flow naturally like one complete video — not stitched fragments.
-- Visual descriptions must be specific: camera angles, scene setting, transitions, text cards.
-- Voiceover must sound like a real person speaking — warm, confident, not reading ad copy.
-- Text overlays should reinforce key points but NOT duplicate voiceover.
-- Strictly 25-35 seconds total.
-- Target audience: 30-55 years old.
-- Brand tone (3ZeBra): warm, confident, benefit-first.
-- NO false claims, NO medical terms, NO young internet slang.`;
+規則：
+- 用最強的鉤子開場。
+- 中段用痛點製造緊張感。
+- 結尾用最好的產品展示 / CTA 收尾。
+- 腳本必須自然流暢，像一支完整的影片——不是拼湊的片段。
+- 畫面描述必須具體：鏡頭角度、場景設定、轉場、字卡。
+- 口播必須像真人在說話——溫暖、有自信，不像在念廣告稿。
+- 字卡應強化重點但不重複口播內容。
+- 嚴格控制在 25-35 秒。
+- 目標受眾：30-55 歲。
+- 品牌語氣（3ZeBra）：溫暖、有自信、以好處為先。
+- 禁止虛假宣稱、禁止醫療術語、禁止年輕人網路用語。
+- 所有內容必須使用繁體中文。`;
 
 // ── CORS ──
 app.use((req, res, next) => {
@@ -178,20 +182,111 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Shared pipeline (after we have a Gemini file) ──
+
+async function runPipeline(res, geminiFile) {
+  // Step 3: Detective Analysis
+  sse(res, 'status', { step: 3, message: 'AI 偵探正在分析影片...' });
+
+  const analysisModel = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: {
+      temperature: 0.8,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const analysisResult = await analysisModel.generateContent([
+    DETECTIVE_PROMPT,
+    {
+      fileData: {
+        mimeType: geminiFile.mimeType,
+        fileUri: geminiFile.uri,
+      },
+    },
+  ]);
+
+  const analysisText = analysisResult.response.text();
+  let menu;
+  try {
+    menu = JSON.parse(analysisText);
+  } catch {
+    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。', raw: analysisText.slice(0, 500) });
+    return;
+  }
+
+  for (const key of ['hooks', 'pains', 'shows']) {
+    if (!Array.isArray(menu[key]) || menu[key].length === 0) {
+      sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+      return;
+    }
+  }
+
+  sse(res, 'menu', menu);
+
+  // Step 4: Generate script
+  sse(res, 'status', { step: 4, message: '正在生成 30 秒廣告腳本...' });
+
+  const scriptModel = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const scriptPrompt = `${SCRIPT_PROMPT}
+
+辨識出的產品：${menu.product_name || '未知'}
+品牌：${menu.brand || '未知'}
+目標受眾：${menu.target_audience || '30-55 歲'}
+核心賣點：${menu.magic_moment || '無'}
+
+10/10/10 選單：
+鉤子：
+${(menu.hooks || []).map(h => `[${h.id}] 畫面: ${h.visual} | 口播: ${h.voiceover} | 字卡: ${h.text_overlay}`).join('\n')}
+
+痛點：
+${(menu.pains || []).map(p => `[${p.id}] 畫面: ${p.visual} | 口播: ${p.voiceover} | 字卡: ${p.text_overlay}`).join('\n')}
+
+展示：
+${(menu.shows || []).map(s => `[${s.id}] 畫面: ${s.visual} | 口播: ${s.voiceover} | 字卡: ${s.text_overlay}`).join('\n')}
+
+請挑選最強的角度，組裝一個 25-35 秒的廣告腳本。`;
+
+  const scriptResult = await scriptModel.generateContent(scriptPrompt);
+  const scriptText = scriptResult.response.text();
+
+  let script;
+  try {
+    script = JSON.parse(scriptText);
+  } catch {
+    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。', raw: scriptText.slice(0, 500) });
+    return;
+  }
+
+  if (!Array.isArray(script.script) || script.script.length === 0) {
+    sse(res, 'error', { message: '分析失敗：請確認影片中有清楚的產品展示。' });
+    return;
+  }
+
+  sse(res, 'script', script);
+  sse(res, 'done', { message: '完成' });
+}
+
 // ──────────────────────────────────────────────────────
-//  SINGLE ENDPOINT — Full automated pipeline
+//  Route 1: URL-based (YouTube / Facebook / Instagram)
 // ──────────────────────────────────────────────────────
 
 app.get('/api/generate', async (req, res) => {
   const videoUrl = req.query.url;
 
   if (!videoUrl) {
-    return res.status(400).json({ error: 'Missing ?url= parameter' });
+    return res.status(400).json({ error: '缺少 ?url= 參數' });
   }
 
-  const videoId = extractVideoId(videoUrl);
-  if (!videoId) {
-    return res.status(400).json({ error: 'Invalid YouTube URL' });
+  if (!isSupportedUrl(videoUrl)) {
+    return res.status(400).json({ error: '不支援的網址。請使用 YouTube、Facebook 或 Instagram 連結。' });
   }
 
   sseHeaders(res);
@@ -199,114 +294,68 @@ app.get('/api/generate', async (req, res) => {
   let localFilePath = null;
 
   try {
-    // Step 1: Download video at 480p
-    sse(res, 'status', { step: 1, message: 'Downloading video (480p)...' });
+    sse(res, 'status', { step: 1, message: '正在下載影片（480p）...' });
     localFilePath = await downloadVideo(videoUrl);
 
-    // Step 2: Upload to Gemini File API
-    sse(res, 'status', { step: 2, message: 'Uploading to Gemini...' });
+    sse(res, 'status', { step: 2, message: '正在上傳至 Gemini...' });
     const geminiFile = await uploadToGemini(localFilePath);
-    sse(res, 'status', { step: 2, message: 'File active. Starting analysis...' });
+    sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
 
-    // Step 3: "Detective" Analysis — extract product + generate 10/10/10
-    sse(res, 'status', { step: 3, message: 'AI analyzing video (Detective Mode)...' });
-
-    const analysisModel = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig: {
-        temperature: 0.8,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const analysisResult = await analysisModel.generateContent([
-      DETECTIVE_PROMPT,
-      {
-        fileData: {
-          mimeType: geminiFile.mimeType,
-          fileUri: geminiFile.uri,
-        },
-      },
-    ]);
-
-    const analysisText = analysisResult.response.text();
-    let menu;
-    try {
-      menu = JSON.parse(analysisText);
-    } catch {
-      sse(res, 'error', { message: 'Analysis Failed: Please ensure the video has clear product demonstrations.', raw: analysisText.slice(0, 500) });
-      return;
-    }
-
-    // Validate menu structure
-    for (const key of ['hooks', 'pains', 'shows']) {
-      if (!Array.isArray(menu[key]) || menu[key].length === 0) {
-        sse(res, 'error', { message: 'Analysis Failed: Please ensure the video has clear product demonstrations.' });
-        return;
-      }
-    }
-
-    sse(res, 'menu', menu);
-
-    // Step 4: Auto-generate 30-second production script
-    sse(res, 'status', { step: 4, message: 'Generating 30-second ad script...' });
-
-    const scriptModel = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const scriptPrompt = `${SCRIPT_PROMPT}
-
-Product identified: ${menu.product_name || 'Unknown'}
-Brand: ${menu.brand || 'Unknown'}
-Target audience: ${menu.target_audience || '30-55 years old'}
-Magic Moment: ${menu.magic_moment || 'N/A'}
-
-10/10/10 Menu:
-HOOKS:
-${(menu.hooks || []).map(h => `[${h.id}] Visual: ${h.visual} | VO: ${h.voiceover} | Text: ${h.text_overlay}`).join('\n')}
-
-PAINS:
-${(menu.pains || []).map(p => `[${p.id}] Visual: ${p.visual} | VO: ${p.voiceover} | Text: ${p.text_overlay}`).join('\n')}
-
-SHOWS:
-${(menu.shows || []).map(s => `[${s.id}] Visual: ${s.visual} | VO: ${s.voiceover} | Text: ${s.text_overlay}`).join('\n')}
-
-Pick the strongest angles and assemble a 25-35 second ad script.`;
-
-    const scriptResult = await scriptModel.generateContent(scriptPrompt);
-    const scriptText = scriptResult.response.text();
-
-    let script;
-    try {
-      script = JSON.parse(scriptText);
-    } catch {
-      sse(res, 'error', { message: 'Analysis Failed: Please ensure the video has clear product demonstrations.', raw: scriptText.slice(0, 500) });
-      return;
-    }
-
-    if (!Array.isArray(script.script) || script.script.length === 0) {
-      sse(res, 'error', { message: 'Analysis Failed: Please ensure the video has clear product demonstrations.' });
-      return;
-    }
-
-    sse(res, 'script', script);
-    sse(res, 'done', { message: 'Complete' });
-
+    await runPipeline(res, geminiFile);
   } catch (err) {
     sse(res, 'error', {
-      message: 'Analysis Failed: Please ensure the video has clear product demonstrations.',
+      message: '分析失敗：請確認影片中有清楚的產品展示。',
       detail: err.message,
     });
   } finally {
-    // Automatic cleanup
     if (localFilePath) cleanupFile(localFilePath);
     res.end();
   }
+});
+
+// ──────────────────────────────────────────────────────
+//  Route 2: Direct MP4 upload
+// ──────────────────────────────────────────────────────
+
+app.post('/api/upload', async (req, res) => {
+  // Receive raw binary body
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', async () => {
+    const buffer = Buffer.concat(chunks);
+
+    if (buffer.length === 0) {
+      return res.status(400).json({ error: '未收到檔案資料' });
+    }
+
+    // Max 200MB
+    if (buffer.length > 200 * 1024 * 1024) {
+      return res.status(413).json({ error: '檔案過大，請上傳 200MB 以內的影片' });
+    }
+
+    sseHeaders(res);
+
+    const localFilePath = path.join(TEMP_DIR, `upload_${Date.now()}.mp4`);
+
+    try {
+      sse(res, 'status', { step: 1, message: '正在儲存上傳的影片...' });
+      fs.writeFileSync(localFilePath, buffer);
+
+      sse(res, 'status', { step: 2, message: '正在上傳至 Gemini...' });
+      const geminiFile = await uploadToGemini(localFilePath);
+      sse(res, 'status', { step: 2, message: '檔案已就緒，開始分析...' });
+
+      await runPipeline(res, geminiFile);
+    } catch (err) {
+      sse(res, 'error', {
+        message: '分析失敗：請確認影片中有清楚的產品展示。',
+        detail: err.message,
+      });
+    } finally {
+      cleanupFile(localFilePath);
+      res.end();
+    }
+  });
 });
 
 // ── Serve index.html ──

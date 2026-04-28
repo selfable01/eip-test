@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3ZeBra Auto-Mirror</title>
+  <title>3ZeBra — 自動鏡像</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -71,11 +71,47 @@
       font-weight: 700;
       margin-bottom: 0.5rem;
     }
-    .input-card p {
+    .input-card .subtitle {
       color: var(--text2);
       font-size: 0.88rem;
       margin-bottom: 2rem;
     }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      background: transparent;
+      border: none;
+      color: var(--text2);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tab-btn:not(.active):hover { background: var(--surface2); }
+
+    .tab-content { display: none; }
+    .tab-content.visible { display: block; }
+
+    /* URL input */
     .url-row {
       display: flex;
       gap: 0.75rem;
@@ -96,6 +132,45 @@
     }
     .url-row input:focus { border-color: var(--accent); }
     .url-row input::placeholder { color: var(--text2); }
+
+    .platform-hint {
+      font-size: 0.75rem;
+      color: var(--text2);
+      margin-top: 0.6rem;
+    }
+
+    /* Upload area */
+    .upload-zone {
+      max-width: 600px;
+      margin: 0 auto;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover { border-color: var(--accent); background: rgba(124,92,252,0.03); }
+    .upload-zone.dragover { border-color: var(--accent); background: rgba(124,92,252,0.06); }
+    .upload-zone .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-zone .upload-text { font-size: 0.88rem; color: var(--text2); }
+    .upload-zone .upload-text strong { color: var(--accent2); }
+    .upload-zone .file-limit { font-size: 0.72rem; color: var(--text2); margin-top: 0.5rem; }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .file-name {
+      display: none;
+      margin-top: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--green);
+    }
+    .file-name.visible { display: block; }
+
+    /* Buttons */
     .btn {
       padding: 0.8rem 1.75rem;
       border: none;
@@ -107,15 +182,14 @@
       background: var(--accent);
       color: #fff;
       white-space: nowrap;
+      font-family: inherit;
     }
     .btn:hover { background: #6a4ae0; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-block { display: block; width: 100%; max-width: 600px; margin: 1rem auto 0; }
 
     /* ---- PROGRESS ---- */
-    .progress-area {
-      display: none;
-      margin-top: 2rem;
-    }
+    .progress-area { display: none; margin-top: 2rem; }
     .progress-area.visible { display: block; }
     .progress-steps {
       display: flex;
@@ -178,7 +252,6 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Product Info */
     .product-banner {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -189,10 +262,7 @@
       flex-wrap: wrap;
       gap: 1.5rem;
     }
-    .product-field {
-      flex: 1;
-      min-width: 150px;
-    }
+    .product-field { flex: 1; min-width: 150px; }
     .product-field .label {
       font-size: 0.68rem;
       text-transform: uppercase;
@@ -201,24 +271,11 @@
       margin-bottom: 0.3rem;
       font-weight: 600;
     }
-    .product-field .value {
-      font-size: 0.9rem;
-      color: var(--text);
-    }
+    .product-field .value { font-size: 0.9rem; color: var(--text); }
 
-    /* Section titles */
-    .section-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-    .section-sub {
-      font-size: 0.8rem;
-      color: var(--text2);
-      margin-bottom: 1.25rem;
-    }
+    .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .section-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 1.25rem; }
 
-    /* 10/10/10 Grid */
     .grid-block { margin-bottom: 2rem; }
     .grid-block h3 {
       font-size: 0.85rem;
@@ -246,11 +303,7 @@
       letter-spacing: 0.5px;
       margin-bottom: 0.4rem;
     }
-    .option-field {
-      font-size: 0.82rem;
-      line-height: 1.5;
-      margin-bottom: 0.25rem;
-    }
+    .option-field { font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.25rem; }
     .option-field strong {
       color: var(--text2);
       font-size: 0.72rem;
@@ -258,7 +311,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* Final Script Table */
     .script-section { margin-top: 2.5rem; }
     .duration-badge {
       display: inline-block;
@@ -303,11 +355,7 @@
       white-space: nowrap;
       width: 90px;
     }
-    .btn-bar {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 1.25rem;
-    }
+    .btn-bar { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
     .btn-outline {
       padding: 0.7rem 1.25rem;
       border: 1px solid var(--border);
@@ -318,6 +366,7 @@
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.2s;
+      font-family: inherit;
     }
     .btn-outline:hover { border-color: var(--accent); }
     .btn-copy { flex: 1; }
@@ -328,6 +377,7 @@
       .url-row { flex-direction: column; }
       .product-banner { flex-direction: column; gap: 0.75rem; }
       .final-table { font-size: 0.78rem; }
+      .btn-bar { flex-direction: column; }
     }
   </style>
 </head>
@@ -335,26 +385,49 @@
 
   <div class="header">
     <div class="logo">3<span>Ze</span>Bra</div>
-    <div class="header-tag">Auto-Mirror</div>
+    <div class="header-tag">自動鏡像</div>
   </div>
 
   <div class="main">
 
     <div class="input-card">
-      <h1>Zero-Input Ad Generator</h1>
-      <p>Paste a YouTube URL. The AI watches the video, identifies the product, and generates a complete 30-second ad script.</p>
+      <h1>零輸入廣告生成器</h1>
+      <p class="subtitle">貼上影片網址或直接上傳 MP4 檔案，AI 將觀看影片、辨識產品並自動生成完整的 30 秒廣告腳本。</p>
 
-      <div class="url-row">
-        <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
-        <button class="btn" id="generateBtn" onclick="generate()">Generate</button>
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('url')">影片網址</button>
+        <button class="tab-btn" onclick="switchTab('upload')">上傳 MP4</button>
       </div>
 
+      <!-- Tab 1: URL -->
+      <div class="tab-content visible" id="tabUrl">
+        <div class="url-row">
+          <input type="text" id="videoUrl" placeholder="貼上 YouTube、Facebook 或 Instagram 影片網址..." />
+          <button class="btn" id="generateBtn" onclick="generateFromUrl()">開始生成</button>
+        </div>
+        <div class="platform-hint">支援平台：YouTube、Facebook、Instagram Reels</div>
+      </div>
+
+      <!-- Tab 2: Upload -->
+      <div class="tab-content" id="tabUpload">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-icon">&#9654;</div>
+          <div class="upload-text">拖放 MP4 檔案到此處，或<strong>點擊選擇檔案</strong></div>
+          <div class="file-limit">支援 MP4 格式，最大 200MB</div>
+          <input type="file" id="fileInput" accept=".mp4,video/mp4" />
+        </div>
+        <div class="file-name" id="fileName"></div>
+        <button class="btn btn-block" id="uploadBtn" onclick="generateFromFile()" disabled>開始生成</button>
+      </div>
+
+      <!-- Progress -->
       <div class="progress-area" id="progressArea">
         <div class="progress-steps">
-          <div class="p-step" id="ps1"><div class="p-dot"></div> Downloading video (480p)...</div>
-          <div class="p-step" id="ps2"><div class="p-dot"></div> Uploading to Gemini File API...</div>
-          <div class="p-step" id="ps3"><div class="p-dot"></div> AI Detective analyzing video...</div>
-          <div class="p-step" id="ps4"><div class="p-dot"></div> Generating 30-second ad script...</div>
+          <div class="p-step" id="ps1"><div class="p-dot"></div><span id="ps1Text">正在處理影片...</span></div>
+          <div class="p-step" id="ps2"><div class="p-dot"></div> 正在上傳至 Gemini...</div>
+          <div class="p-step" id="ps3"><div class="p-dot"></div> AI 偵探正在分析影片...</div>
+          <div class="p-step" id="ps4"><div class="p-dot"></div> 正在生成 30 秒廣告腳本...</div>
         </div>
       </div>
 
@@ -364,50 +437,47 @@
     <!-- RESULTS -->
     <div class="results-area" id="resultsArea">
 
-      <!-- Product Info Banner -->
       <div class="product-banner" id="productBanner"></div>
 
-      <!-- 10/10/10 Menu -->
-      <h2 class="section-title">10 / 10 / 10 Ad Menu</h2>
-      <p class="section-sub">AI-generated creative building blocks extracted from the video.</p>
+      <h2 class="section-title">10 / 10 / 10 廣告選單</h2>
+      <p class="section-sub">AI 從影片中提取的創意積木。</p>
 
       <div class="grid-block">
-        <h3>Hooks (H1-H10)</h3>
+        <h3>影片鉤子（H1-H10）</h3>
         <div class="option-list" id="hooksList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>Pains (P1-P10)</h3>
+        <h3>痛點分鏡（P1-P10）</h3>
         <div class="option-list" id="painsList"></div>
       </div>
 
       <div class="grid-block">
-        <h3>Shows (S1-S10)</h3>
+        <h3>展示分鏡（S1-S10）</h3>
         <div class="option-list" id="showsList"></div>
       </div>
 
-      <!-- Final Script -->
       <div class="script-section">
-        <h2 class="section-title">30-Second Production Script</h2>
-        <p class="section-sub">Ready-to-shoot visual-audio production table.</p>
+        <h2 class="section-title">30 秒製作腳本</h2>
+        <p class="section-sub">可直接投入拍攝的視覺-音訊製作表。</p>
 
         <div id="durationBadge" class="duration-badge" style="display:none;"></div>
 
         <table class="final-table" id="finalTable">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Visual</th>
-              <th>Voiceover</th>
-              <th>Text Overlay</th>
+              <th>時間</th>
+              <th>畫面內容</th>
+              <th>口播內容</th>
+              <th>字卡設計</th>
             </tr>
           </thead>
           <tbody id="finalBody"></tbody>
         </table>
 
         <div class="btn-bar">
-          <button class="btn-outline" onclick="resetAll()">Start Over</button>
-          <button class="btn btn-copy" onclick="copyTable()">Copy Script to Clipboard</button>
+          <button class="btn-outline" onclick="resetAll()">重新開始</button>
+          <button class="btn btn-copy" onclick="copyTable()">複製腳本到剪貼簿</button>
         </div>
       </div>
 
@@ -416,6 +486,55 @@
   </div>
 
 <script>
+  let selectedFile = null;
+
+  // ── Tab switching ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('visible'));
+    if (tab === 'url') {
+      document.querySelector('.tab-btn:first-child').classList.add('active');
+      document.getElementById('tabUrl').classList.add('visible');
+    } else {
+      document.querySelector('.tab-btn:last-child').classList.add('active');
+      document.getElementById('tabUpload').classList.add('visible');
+    }
+  }
+
+  // ── File upload handling ──
+  const fileInput = document.getElementById('fileInput');
+  const uploadZone = document.getElementById('uploadZone');
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) selectFile(file);
+  });
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'video/mp4') selectFile(file);
+    else showError('請上傳 MP4 格式的影片檔案。');
+  });
+
+  function selectFile(file) {
+    selectedFile = file;
+    const nameEl = document.getElementById('fileName');
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    nameEl.textContent = `已選擇：${file.name}（${sizeMB} MB）`;
+    nameEl.classList.add('visible');
+    document.getElementById('uploadBtn').disabled = false;
+  }
+
+  // ── Helpers ──
   function escHtml(s) {
     const d = document.createElement('div');
     d.textContent = s || '';
@@ -428,18 +547,28 @@
     if (state) el.classList.add(state);
   }
 
-  async function generate() {
-    const url = document.getElementById('videoUrl').value.trim();
-    if (!url) return;
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
 
-    // Reset UI
+  function startProgress(step1Text) {
     document.getElementById('errorMsg').classList.remove('visible');
     document.getElementById('resultsArea').classList.remove('visible');
     document.getElementById('progressArea').classList.add('visible');
-    document.getElementById('generateBtn').disabled = true;
-
+    document.getElementById('ps1Text').textContent = step1Text;
     for (let i = 1; i <= 4; i++) setStepState(i, '');
     setStepState(1, 'active');
+  }
+
+  // ── Generate from URL ──
+  async function generateFromUrl() {
+    const url = document.getElementById('videoUrl').value.trim();
+    if (!url) { showError('請輸入影片網址。'); return; }
+
+    startProgress('正在下載影片（480p）...');
+    document.getElementById('generateBtn').disabled = true;
 
     try {
       const res = await fetch('/api/generate?url=' + encodeURIComponent(url));
@@ -451,6 +580,28 @@
     }
   }
 
+  // ── Generate from file upload ──
+  async function generateFromFile() {
+    if (!selectedFile) return;
+
+    startProgress('正在上傳影片檔案...');
+    document.getElementById('uploadBtn').disabled = true;
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: selectedFile,
+      });
+      await handleSSE(res);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      document.getElementById('uploadBtn').disabled = false;
+    }
+  }
+
+  // ── SSE handler (shared) ──
   async function handleSSE(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -473,32 +624,27 @@
 
           if (eventType === 'status') {
             const step = payload.step || 1;
-            // Mark previous steps done
             for (let i = 1; i < step; i++) setStepState(i, 'done');
             setStepState(step, 'active');
           }
-
           else if (eventType === 'menu') {
             setStepState(3, 'done');
             setStepState(4, 'active');
             renderMenu(payload);
           }
-
           else if (eventType === 'script') {
             setStepState(4, 'done');
             renderScript(payload);
             document.getElementById('resultsArea').classList.add('visible');
             document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
           }
-
           else if (eventType === 'error') {
             for (let i = 1; i <= 4; i++) {
               const el = document.getElementById('ps' + i);
               if (el.classList.contains('active')) setStepState(i, 'error');
             }
-            showError(payload.message || 'An error occurred');
+            showError(payload.message || '發生錯誤');
           }
-
           else if (eventType === 'done') {
             for (let i = 1; i <= 4; i++) setStepState(i, 'done');
           }
@@ -507,24 +653,18 @@
     }
   }
 
-  function showError(msg) {
-    const el = document.getElementById('errorMsg');
-    el.textContent = msg;
-    el.classList.add('visible');
-  }
-
+  // ── Render ──
   function renderMenu(data) {
-    // Product banner
     const banner = document.getElementById('productBanner');
     banner.innerHTML = [
-      { label: 'Product', value: data.product_name },
-      { label: 'Brand', value: data.brand },
-      { label: 'Audience', value: data.target_audience },
-      { label: 'Magic Moment', value: data.magic_moment },
+      { label: '產品名稱', value: data.product_name },
+      { label: '品牌', value: data.brand },
+      { label: '目標受眾', value: data.target_audience },
+      { label: '核心賣點', value: data.magic_moment },
     ].map(f => `
       <div class="product-field">
         <div class="label">${escHtml(f.label)}</div>
-        <div class="value">${escHtml(f.value || 'N/A')}</div>
+        <div class="value">${escHtml(f.value || '無')}</div>
       </div>
     `).join('');
 
@@ -538,9 +678,9 @@
     container.innerHTML = items.map(item => `
       <div class="option-card">
         <div class="option-id">${escHtml(item.id)}</div>
-        <div class="option-field"><strong>Visual: </strong>${escHtml(item.visual)}</div>
-        <div class="option-field"><strong>Voiceover: </strong>${escHtml(item.voiceover)}</div>
-        <div class="option-field"><strong>Text Overlay: </strong>${escHtml(item.text_overlay)}</div>
+        <div class="option-field"><strong>畫面內容：</strong>${escHtml(item.visual)}</div>
+        <div class="option-field"><strong>口播內容：</strong>${escHtml(item.voiceover)}</div>
+        <div class="option-field"><strong>字卡設計：</strong>${escHtml(item.text_overlay)}</div>
       </div>
     `).join('');
   }
@@ -548,10 +688,9 @@
   function renderScript(data) {
     const badge = document.getElementById('durationBadge');
     if (data.total_duration) {
-      badge.textContent = 'Duration: ' + data.total_duration;
+      badge.textContent = '總長度：' + data.total_duration;
       badge.style.display = 'inline-block';
     }
-
     const tbody = document.getElementById('finalBody');
     tbody.innerHTML = (data.script || []).map(row => `
       <tr>
@@ -572,7 +711,7 @@
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.querySelector('.btn-copy');
       const orig = btn.textContent;
-      btn.textContent = 'Copied!';
+      btn.textContent = '已複製！';
       setTimeout(() => btn.textContent = orig, 1500);
     });
   }
@@ -582,13 +721,17 @@
     document.getElementById('progressArea').classList.remove('visible');
     document.getElementById('resultsArea').classList.remove('visible');
     document.getElementById('errorMsg').classList.remove('visible');
+    document.getElementById('fileName').classList.remove('visible');
+    document.getElementById('uploadBtn').disabled = true;
+    selectedFile = null;
+    fileInput.value = '';
     for (let i = 1; i <= 4; i++) setStepState(i, '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Enter key triggers generate
+  // Enter key on URL input
   document.getElementById('videoUrl').addEventListener('keydown', e => {
-    if (e.key === 'Enter') generate();
+    if (e.key === 'Enter') generateFromUrl();
   });
 </script>
 
