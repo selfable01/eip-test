@@ -365,6 +365,46 @@
       letter-spacing: 0.5px;
     }
 
+    /* ---- INTEL DASHBOARD ---- */
+    .intel-dashboard { margin-bottom: 2.5rem; }
+    .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .intel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+    }
+    .intel-card-full { grid-column: 1 / -1; }
+    .intel-card h3 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .intel-text { font-size: 0.85rem; line-height: 1.65; color: var(--text); }
+    .intel-field { margin-bottom: 0.5rem; }
+    .intel-field .il { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); font-weight: 600; }
+    .intel-field .iv { font-size: 0.88rem; color: var(--text); margin-top: 0.15rem; }
+    .transcript-scroll {
+      max-height: 250px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+    .transcript-scroll::-webkit-scrollbar { width: 6px; }
+    .transcript-scroll::-webkit-scrollbar-track { background: var(--bg); border-radius: 3px; }
+    .transcript-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .ts-line { display: flex; gap: 0.75rem; margin-bottom: 0.35rem; }
+    .ts-time { color: var(--accent); font-weight: 600; font-size: 0.75rem; min-width: 40px; flex-shrink: 0; }
+    .ts-text { color: var(--text); }
+
+    @media (max-width: 640px) {
+      .intel-grid { grid-template-columns: 1fr; }
+    }
+
     .script-section { margin-top: 2.5rem; }
     .duration-badge {
       display: inline-block;
@@ -492,8 +532,34 @@
 
       <div class="product-banner" id="productBanner"></div>
 
+      <!-- Intelligence Dashboard -->
+      <div class="intel-dashboard" id="intelDashboard" style="display:none;">
+        <h2 class="section-title">影片情報儀表板</h2>
+        <p class="section-sub">AI 從影片中提取的完整分析。</p>
+
+        <div class="intel-grid">
+          <!-- Audience Profile -->
+          <div class="intel-card">
+            <h3>受眾分析</h3>
+            <div id="audienceProfile"></div>
+          </div>
+
+          <!-- Visual Description -->
+          <div class="intel-card">
+            <h3>視覺風格描述</h3>
+            <div id="visualDesc" class="intel-text"></div>
+          </div>
+
+          <!-- Transcript -->
+          <div class="intel-card intel-card-full">
+            <h3>影片逐字稿</h3>
+            <div id="transcriptBox" class="transcript-scroll"></div>
+          </div>
+        </div>
+      </div>
+
       <h2 class="section-title">10 / 10 / 10 廣告選單</h2>
-      <p class="section-sub">AI 從影片中提取的創意積木。</p>
+      <p class="section-sub">AI 從影片中提取的創意積木。點擊選擇你喜歡的項目。</p>
 
       <div class="grid-block">
         <h3>影片鉤子（H1-H10）</h3>
@@ -780,12 +846,13 @@
 
   // ── Render ──
   function renderMenu(data) {
+    // Product banner
     const banner = document.getElementById('productBanner');
     banner.innerHTML = [
       { label: '產品名稱', value: data.product_name },
       { label: '品牌', value: data.brand },
-      { label: '目標受眾', value: data.target_audience },
       { label: '核心賣點', value: data.magic_moment },
+      { label: '利基市場', value: data.niche },
     ].map(f => `
       <div class="product-field">
         <div class="label">${escHtml(f.label)}</div>
@@ -793,6 +860,41 @@
       </div>
     `).join('');
 
+    // Intelligence Dashboard
+    const dashboard = document.getElementById('intelDashboard');
+    dashboard.style.display = 'block';
+
+    // Audience profile
+    document.getElementById('audienceProfile').innerHTML = [
+      { label: '目標受眾', value: data.target_audience },
+      { label: '年齡範圍', value: data.age_range },
+      { label: '性別', value: data.gender },
+      { label: '利基市場', value: data.niche },
+      { label: '核心痛點', value: data.pain_points_summary },
+    ].map(f => `
+      <div class="intel-field">
+        <div class="il">${escHtml(f.label)}</div>
+        <div class="iv">${escHtml(f.value || '無')}</div>
+      </div>
+    `).join('');
+
+    // Visual description
+    document.getElementById('visualDesc').textContent = data.visual_description || '無';
+
+    // Transcript
+    const transcriptBox = document.getElementById('transcriptBox');
+    if (Array.isArray(data.transcript) && data.transcript.length > 0) {
+      transcriptBox.innerHTML = data.transcript.map(t => `
+        <div class="ts-line">
+          <span class="ts-time">${escHtml(t.time || '')}</span>
+          <span class="ts-text">${escHtml(t.text || '')}</span>
+        </div>
+      `).join('');
+    } else {
+      transcriptBox.innerHTML = '<div style="color:var(--text2)">無法提取逐字稿</div>';
+    }
+
+    // 10/10/10 cards
     selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
     renderCards('hooksList', data.hooks || [], 'hooks');
     renderCards('painsList', data.pains || [], 'pains');
@@ -931,6 +1033,7 @@
     document.getElementById('fileName').classList.remove('visible');
     document.getElementById('scriptSection').style.display = 'none';
     document.getElementById('scriptLoader').classList.remove('visible');
+    document.getElementById('intelDashboard').style.display = 'none';
     document.getElementById('uploadBtn').disabled = true;
     selectedFile = null;
     menuData = null;
