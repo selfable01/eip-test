@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>自動鏡像</title>
+  <title>無限 AI 短影音生產力</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,6 +20,12 @@
       --red: #f43f5e;
       --orange: #f59e0b;
       --radius: 12px;
+      --sidebar-w: 300px;
+      --content-bg: #f5f5f7;
+      --content-text: #1a1a2e;
+      --content-text2: #555;
+      --content-border: #ddd;
+      --content-surface: #fff;
     }
 
     body {
@@ -36,12 +42,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1.25rem 2rem;
+      padding: 0.85rem 1.5rem;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
     }
-    .logo { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo { font-size: 1rem; font-weight: 700; letter-spacing: -0.5px; }
     .logo span { color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-tag {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -49,445 +56,366 @@
       color: var(--text2);
     }
 
-    /* ---- MAIN ---- */
-    .main {
+    /* ---- INPUT VIEW ---- */
+    #inputView {
       flex: 1;
-      max-width: 900px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 3rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
     }
-
-    /* ---- INPUT AREA ---- */
     .input-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 2.5rem;
       text-align: center;
+      max-width: 700px;
+      width: 100%;
     }
-    .input-card h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-    .input-card .subtitle {
-      color: var(--text2);
-      font-size: 0.88rem;
-      margin-bottom: 2rem;
-    }
+    .input-card h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .input-card .subtitle { color: var(--text2); font-size: 0.85rem; margin-bottom: 2rem; }
 
-    /* Tabs */
     .tab-bar {
-      display: flex;
-      justify-content: center;
-      gap: 0;
-      margin-bottom: 1.5rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
+      display: flex; justify-content: center; gap: 0;
+      margin-bottom: 1.5rem; border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; max-width: 400px;
+      margin-left: auto; margin-right: auto;
     }
     .tab-btn {
-      flex: 1;
-      padding: 0.65rem 1rem;
-      background: transparent;
-      border: none;
-      color: var(--text2);
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
+      flex: 1; padding: 0.6rem 1rem; background: transparent; border: none;
+      color: var(--text2); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
     }
-    .tab-btn.active {
-      background: var(--accent);
-      color: #fff;
-    }
+    .tab-btn.active { background: var(--accent); color: #fff; }
     .tab-btn:not(.active):hover { background: var(--surface2); }
 
     .tab-content { display: none; }
     .tab-content.visible { display: block; }
 
-    /* URL input */
-    .url-row {
-      display: flex;
-      gap: 0.75rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
+    .url-row { display: flex; gap: 0.75rem; max-width: 600px; margin: 0 auto; }
     .url-row input {
-      flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.8rem 1rem;
-      color: var(--text);
-      font-size: 0.9rem;
-      outline: none;
-      font-family: inherit;
-      transition: border 0.2s;
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.8rem 1rem; color: var(--text);
+      font-size: 0.9rem; outline: none; font-family: inherit; transition: border 0.2s;
     }
     .url-row input:focus { border-color: var(--accent); }
     .url-row input::placeholder { color: var(--text2); }
+    .platform-hint { font-size: 0.75rem; color: var(--text2); margin-top: 0.6rem; }
 
-    .platform-hint {
-      font-size: 0.75rem;
-      color: var(--text2);
-      margin-top: 0.6rem;
-    }
-
-    /* Upload area */
     .upload-zone {
-      max-width: 600px;
-      margin: 0 auto;
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 2.5rem 1.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
+      max-width: 600px; margin: 0 auto; border: 2px dashed var(--border);
+      border-radius: var(--radius); padding: 2rem 1.5rem; cursor: pointer;
+      transition: all 0.2s; position: relative;
     }
     .upload-zone:hover { border-color: var(--accent); background: rgba(124,92,252,0.03); }
-    .upload-zone.dragover { border-color: var(--accent); background: rgba(124,92,252,0.06); }
     .upload-zone .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .upload-zone .upload-text { font-size: 0.88rem; color: var(--text2); }
+    .upload-zone .upload-text { font-size: 0.85rem; color: var(--text2); }
     .upload-zone .upload-text strong { color: var(--accent2); }
     .upload-zone .file-limit { font-size: 0.72rem; color: var(--text2); margin-top: 0.5rem; }
-    .upload-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-    .file-name {
-      display: none;
-      margin-top: 0.75rem;
-      font-size: 0.82rem;
-      color: var(--green);
-    }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .file-name { display: none; margin-top: 0.75rem; font-size: 0.82rem; color: var(--green); }
     .file-name.visible { display: block; }
 
-    /* Buttons */
     .btn {
-      padding: 0.8rem 1.75rem;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: var(--accent);
-      color: #fff;
-      white-space: nowrap;
-      font-family: inherit;
+      padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600;
+      font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+      background: var(--accent); color: #fff; white-space: nowrap; font-family: inherit;
     }
     .btn:hover { background: #6a4ae0; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-block { display: block; width: 100%; max-width: 600px; margin: 1rem auto 0; }
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.8rem; }
 
-    /* ---- PROGRESS ---- */
+    /* Progress */
     .progress-area { display: none; margin-top: 2rem; }
     .progress-area.visible { display: block; }
-    .progress-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    .p-step {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 0.85rem;
-      color: var(--text2);
-      transition: color 0.3s;
-    }
+    .progress-steps { display: flex; flex-direction: column; gap: 0.5rem; max-width: 500px; margin: 0 auto; }
+    .p-step { display: flex; align-items: center; gap: 0.7rem; font-size: 0.82rem; color: var(--text2); }
     .p-step.active { color: var(--accent2); }
     .p-step.done { color: var(--green); }
     .p-step.error { color: var(--red); }
-    .p-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: var(--border);
-      flex-shrink: 0;
-      transition: background 0.3s;
-    }
+    .p-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
     .p-step.active .p-dot { background: var(--accent); animation: pulse 1.2s infinite; }
     .p-step.done .p-dot { background: var(--green); }
     .p-step.error .p-dot { background: var(--red); }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-    /* ---- ERROR ---- */
     .error-msg {
-      display: none;
-      background: rgba(244,63,94,0.08);
-      border: 1px solid rgba(244,63,94,0.25);
-      color: var(--red);
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
-      font-size: 0.85rem;
-      margin-top: 1.5rem;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
+      display: none; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.25);
+      color: var(--red); border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.85rem;
+      margin-top: 1.5rem; max-width: 600px; margin-left: auto; margin-right: auto;
     }
     .error-msg.visible { display: block; }
 
-    /* ---- RESULTS ---- */
-    .results-area {
-      display: none;
-      margin-top: 2.5rem;
-      animation: fadeUp 0.4s ease;
+    /* ---- RESULTS VIEW (Sidebar Layout) ---- */
+    #resultsView { display: none; flex: 1; }
+    #resultsView.visible { display: flex; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w); min-width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;
     }
-    .results-area.visible { display: block; }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .sidebar-title {
+      font-size: 0.95rem; font-weight: 700; line-height: 1.4;
+      padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .video-info-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .video-info-list li {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      font-size: 0.78rem; color: var(--text2); line-height: 1.4;
+    }
+    .video-info-list .info-icon { flex-shrink: 0; width: 16px; text-align: center; color: var(--accent2); }
+    .video-info-list .info-value { color: var(--text); }
+    .video-info-list .info-badge {
+      display: inline-block; background: var(--red); color: #fff;
+      padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600;
     }
 
-    .product-banner {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem 2rem;
-      margin-bottom: 2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
+    .sidebar-actions {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      padding-top: 0.75rem; border-top: 1px solid var(--border);
     }
-    .product-field { flex: 1; min-width: 150px; }
-    .product-field .label {
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text2);
-      margin-bottom: 0.3rem;
-      font-weight: 600;
+    .sidebar-btn {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0.75rem; background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 0.78rem;
+      cursor: pointer; transition: all 0.2s; font-family: inherit; text-align: left;
     }
-    .product-field .value { font-size: 0.9rem; color: var(--text); }
+    .sidebar-btn:hover { border-color: var(--accent); background: var(--surface2); }
+    .sidebar-btn .sb-icon { width: 16px; text-align: center; color: var(--accent2); flex-shrink: 0; }
 
-    .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .section-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 1.25rem; }
-
-    .grid-block { margin-bottom: 2rem; }
-    .grid-block h3 {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--accent2);
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--border);
+    /* Content Area */
+    .content-area {
+      flex: 1; background: var(--content-bg); overflow-y: auto;
+      padding: 2rem 2.5rem; color: var(--content-text);
     }
-    .option-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    /* Content tabs */
+    .content-tabs {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
+    }
+    .content-tab {
+      padding: 0.5rem 1rem; border: 1px solid var(--content-border);
+      border-radius: 6px; background: var(--content-surface); color: var(--content-text);
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .content-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .content-tab:not(.active):hover { border-color: var(--accent); }
+
+    .content-panel { display: none; }
+    .content-panel.visible { display: block; }
+
+    /* Section cards */
+    .section-card {
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .section-card h3 {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--content-border);
+      color: var(--content-text); display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-card h3 .s-icon { color: var(--accent); }
+    .section-card h4 {
+      font-size: 0.85rem; font-weight: 700; margin: 1rem 0 0.5rem;
+      color: var(--content-text);
+    }
+    .section-card p, .section-card .s-text {
+      font-size: 0.84rem; line-height: 1.7; color: #333;
+    }
+
+    /* Storyboard table */
+    .sb-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); overflow: hidden; font-size: 0.82rem;
+    }
+    .sb-table th {
+      background: #eee; font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 1px; color: #666; padding: 0.75rem 0.85rem;
+      text-align: left; border-bottom: 1px solid var(--content-border); font-weight: 700;
+    }
+    .sb-table td {
+      padding: 0.85rem; line-height: 1.6; border-bottom: 1px solid #eee;
+      vertical-align: top; color: #333;
+    }
+    .sb-table tr:last-child td { border-bottom: none; }
+    .sb-table td:first-child { font-weight: 600; color: var(--accent); white-space: nowrap; width: 80px; }
+    .sb-table td:last-child { white-space: nowrap; width: 100px; }
+
+    /* Product Input Form */
+    .product-form {
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .product-form h3 {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--content-text);
+    }
+    .product-form .form-sub {
+      font-size: 0.8rem; color: var(--content-text2); margin-bottom: 1.25rem;
+    }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block; font-size: 0.8rem; font-weight: 600;
+      color: var(--content-text); margin-bottom: 0.35rem;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 0.7rem 0.85rem; border: 1px solid var(--content-border);
+      border-radius: 8px; font-size: 0.85rem; font-family: inherit;
+      outline: none; transition: border 0.2s; color: var(--content-text);
+      background: #fafafa;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-group textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: #aaa; }
+
+    .btn-primary {
+      padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600;
+      font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+      background: var(--accent); color: #fff; font-family: inherit;
+    }
+    .btn-primary:hover { background: #6a4ae0; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* 10/10/10 Menu */
+    .menu-section { margin-bottom: 1.5rem; }
+    .menu-section h2 {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--content-text);
+    }
+    .menu-section .menu-sub { font-size: 0.8rem; color: var(--content-text2); margin-bottom: 1.25rem; }
+
+    .menu-block { margin-bottom: 1.5rem; }
+    .menu-block h3 {
+      font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent); margin-bottom: 0.65rem; padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent); display: inline-block;
+    }
+    .option-list { display: flex; flex-direction: column; gap: 0.4rem; }
     .option-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      transition: all 0.2s;
-      cursor: pointer;
-      user-select: none;
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: 10px; padding: 0.85rem 1rem; transition: all 0.2s;
+      cursor: pointer; user-select: none;
     }
-    .option-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .option-card:hover { border-color: var(--accent); background: #f0ecff; }
     .option-card.selected { border-color: var(--accent); background: rgba(124,92,252,0.08); }
     .option-card .check-indicator {
-      display: inline-block;
-      width: 18px; height: 18px;
-      border: 1.5px solid var(--border);
-      border-radius: 4px;
-      vertical-align: middle;
-      margin-right: 0.5rem;
-      transition: all 0.2s;
-      position: relative;
+      display: inline-block; width: 16px; height: 16px;
+      border: 1.5px solid var(--content-border); border-radius: 4px;
+      vertical-align: middle; margin-right: 0.4rem; transition: all 0.2s; position: relative;
     }
-    .option-card.selected .check-indicator {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
+    .option-card.selected .check-indicator { background: var(--accent); border-color: var(--accent); }
     .option-card.selected .check-indicator::after {
-      content: '';
-      position: absolute;
-      left: 5px; top: 2px;
-      width: 6px; height: 9px;
-      border: solid #fff;
-      border-width: 0 2px 2px 0;
+      content: ''; position: absolute; left: 4px; top: 1px;
+      width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0;
       transform: rotate(45deg);
     }
+    .option-id { font-size: 0.7rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+    .option-field { font-size: 0.8rem; line-height: 1.5; margin-bottom: 0.15rem; color: #333; }
+    .option-field strong { color: #666; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
 
+    /* Generate bar */
     .generate-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem 1.5rem;
-      margin-top: 1.5rem;
-      position: sticky;
-      bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); padding: 0.85rem 1.25rem;
+      margin-top: 1rem; position: sticky; bottom: 0.5rem;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     }
-    .sel-count { font-size: 0.82rem; color: var(--text2); }
-    .sel-count strong { color: var(--accent2); }
+    .sel-count { font-size: 0.82rem; color: var(--content-text2); }
+    .sel-count strong { color: var(--accent); }
 
-    .script-loader { display: none; text-align: center; padding: 2rem 0; }
-    .script-loader.visible { display: block; }
-    .script-loader .spinner {
-      width: 32px; height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 0.75rem;
+    /* Loader */
+    .loader { display: none; text-align: center; padding: 2rem 0; }
+    .loader.visible { display: block; }
+    .loader .spinner {
+      width: 28px; height: 28px; border: 3px solid var(--content-border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .script-loader p { color: var(--text2); font-size: 0.85rem; }
-    .option-id {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.4rem;
-    }
-    .option-field { font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.25rem; }
-    .option-field strong {
-      color: var(--text2);
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
+    .loader p { color: var(--content-text2); font-size: 0.82rem; }
 
-    /* ---- INTEL DASHBOARD ---- */
-    .intel-dashboard { margin-bottom: 2.5rem; }
-    .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .intel-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem 1.5rem;
-    }
-    .intel-card-full { grid-column: 1 / -1; }
-    .intel-card h3 {
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--accent2);
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .intel-text { font-size: 0.85rem; line-height: 1.65; color: var(--text); }
-    .intel-field { margin-bottom: 0.5rem; }
-    .intel-field .il { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); font-weight: 600; }
-    .intel-field .iv { font-size: 0.88rem; color: var(--text); margin-top: 0.15rem; }
-    .transcript-scroll {
-      max-height: 250px;
-      overflow-y: auto;
-      font-size: 0.82rem;
-      line-height: 1.7;
-    }
-    .transcript-scroll::-webkit-scrollbar { width: 6px; }
-    .transcript-scroll::-webkit-scrollbar-track { background: var(--bg); border-radius: 3px; }
-    .transcript-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .ts-line { display: flex; gap: 0.75rem; margin-bottom: 0.35rem; }
-    .ts-time { color: var(--accent); font-weight: 600; font-size: 0.75rem; min-width: 40px; flex-shrink: 0; }
-    .ts-text { color: var(--text); }
-
-    @media (max-width: 640px) {
-      .intel-grid { grid-template-columns: 1fr; }
-    }
-
-    .intel-details { }
-    .intel-summary {
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--accent2);
-      padding: 0.75rem 1rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      list-style: none;
-      transition: all 0.2s;
-    }
-    .intel-summary:hover { border-color: var(--accent); }
-    .intel-summary::before { content: '▶ '; font-size: 0.7rem; }
-    details[open] .intel-summary::before { content: '▼ '; }
-
-    .script-section { margin-top: 2.5rem; }
+    /* Script section */
+    .script-section { margin-top: 1.5rem; }
+    .script-section h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--content-text); }
+    .script-section .script-sub { font-size: 0.8rem; color: var(--content-text2); margin-bottom: 1rem; }
     .duration-badge {
-      display: inline-block;
-      background: rgba(124,92,252,0.12);
-      color: var(--accent2);
-      padding: 0.3rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
+      display: inline-block; background: rgba(124,92,252,0.12); color: var(--accent);
+      padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.75rem;
+      font-weight: 600; margin-bottom: 1rem;
     }
-    .final-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .final-table th {
-      background: var(--surface2);
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text2);
-      padding: 0.85rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-    .final-table td {
-      padding: 1rem;
-      font-size: 0.84rem;
-      line-height: 1.55;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    .final-table tr:last-child td { border-bottom: none; }
-    .final-table td:first-child {
-      font-weight: 600;
-      color: var(--accent2);
-      white-space: nowrap;
-      width: 90px;
-    }
-    .btn-bar { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+    .btn-bar { display: flex; gap: 0.65rem; margin-top: 1rem; }
     .btn-outline {
-      padding: 0.7rem 1.25rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: transparent;
-      color: var(--accent2);
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
+      padding: 0.65rem 1.15rem; border: 1px solid var(--content-border);
+      border-radius: 8px; background: var(--content-surface); color: var(--accent);
+      font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; font-family: inherit;
     }
     .btn-outline:hover { border-color: var(--accent); }
-    .btn-copy { flex: 1; }
 
-    @media (max-width: 640px) {
-      .main { padding: 1.5rem 1rem; }
-      .input-card { padding: 1.5rem; }
+    /* Prompt export panel */
+    .prompt-export {
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); padding: 1.5rem;
+    }
+    .prompt-export h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--content-text); }
+    .prompt-export .pe-sub { font-size: 0.8rem; color: var(--content-text2); margin-bottom: 1rem; }
+    .prompt-textarea {
+      width: 100%; min-height: 400px; padding: 1rem; border: 1px solid var(--content-border);
+      border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.8rem;
+      line-height: 1.6; resize: vertical; outline: none; color: var(--content-text);
+      background: #fafafa;
+    }
+    .prompt-textarea:focus { border-color: var(--accent); }
+
+    /* Collapsible details */
+    .intel-details { margin-bottom: 1.5rem; }
+    .intel-summary {
+      cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--accent);
+      padding: 0.75rem 1rem; background: var(--content-surface);
+      border: 1px solid var(--content-border); border-radius: 8px;
+      list-style: none; transition: all 0.2s;
+    }
+    .intel-summary:hover { border-color: var(--accent); }
+    .intel-summary::before { content: '\25B6 '; font-size: 0.7rem; }
+    details[open] .intel-summary::before { content: '\25BC '; }
+
+    .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .intel-card {
+      background: var(--content-surface); border: 1px solid var(--content-border);
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+    }
+    .intel-card-full { grid-column: 1 / -1; }
+    .intel-card h4 {
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent); margin-bottom: 0.5rem; padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--content-border); font-weight: 700;
+    }
+    .intel-field { margin-bottom: 0.4rem; }
+    .intel-field .il { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; }
+    .intel-field .iv { font-size: 0.84rem; color: var(--content-text); margin-top: 0.1rem; }
+
+    .transcript-scroll {
+      max-height: 250px; overflow-y: auto; font-size: 0.8rem; line-height: 1.7;
+    }
+    .transcript-scroll::-webkit-scrollbar { width: 5px; }
+    .transcript-scroll::-webkit-scrollbar-track { background: #f0f0f0; border-radius: 3px; }
+    .transcript-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .ts-line { display: flex; gap: 0.65rem; margin-bottom: 0.3rem; }
+    .ts-time { color: var(--accent); font-weight: 600; font-size: 0.72rem; min-width: 38px; flex-shrink: 0; }
+    .ts-text { color: var(--content-text); }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      #resultsView.visible { flex-direction: column; }
+      .sidebar { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); }
+      .content-area { padding: 1.5rem 1rem; }
+      .intel-grid { grid-template-columns: 1fr; }
       .url-row { flex-direction: column; }
-      .product-banner { flex-direction: column; gap: 0.75rem; }
-      .final-table { font-size: 0.78rem; }
       .btn-bar { flex-direction: column; }
     }
   </style>
@@ -495,31 +423,31 @@
 <body>
 
   <div class="header">
-    <div class="header-tag">自動鏡像</div>
+    <div class="logo"><span>AI</span> 短影音生產力</div>
+    <div class="header-right">
+      <div class="header-tag">無限 AI</div>
+    </div>
   </div>
 
-  <div class="main">
-
+  <!-- ====== INPUT VIEW ====== -->
+  <div id="inputView">
     <div class="input-card">
-      <h1>零輸入廣告生成器</h1>
-      <p class="subtitle">貼上影片網址或直接上傳 MP4 檔案，AI 將觀看影片、辨識產品並自動生成完整的 30 秒廣告腳本。</p>
+      <h1>影片廣告分析器</h1>
+      <p class="subtitle">貼上參考影片網址或上傳 MP4，AI 將分析影片風格並為您的產品生成廣告素材。</p>
 
-      <!-- Tabs -->
       <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab('url')">影片網址</button>
         <button class="tab-btn" onclick="switchTab('upload')">上傳 MP4</button>
       </div>
 
-      <!-- Tab 1: URL -->
       <div class="tab-content visible" id="tabUrl">
         <div class="url-row">
           <input type="text" id="videoUrl" placeholder="貼上 YouTube、Facebook 或 Instagram 影片網址..." />
-          <button class="btn" id="generateBtn" onclick="generateFromUrl()">開始生成</button>
+          <button class="btn" id="generateBtn" onclick="generateFromUrl()">開始分析</button>
         </div>
         <div class="platform-hint">支援平台：YouTube、Facebook、Instagram Reels</div>
       </div>
 
-      <!-- Tab 2: Upload -->
       <div class="tab-content" id="tabUpload">
         <div class="upload-zone" id="uploadZone">
           <div class="upload-icon">&#9654;</div>
@@ -528,45 +456,77 @@
           <input type="file" id="fileInput" accept=".mp4,video/mp4" />
         </div>
         <div class="file-name" id="fileName"></div>
-        <button class="btn btn-block" id="uploadBtn" onclick="generateFromFile()" disabled>開始生成</button>
+        <button class="btn btn-block" id="uploadBtn" onclick="generateFromFile()" disabled>開始分析</button>
       </div>
 
-      <!-- Progress -->
       <div class="progress-area" id="progressArea">
         <div class="progress-steps">
           <div class="p-step" id="ps1"><div class="p-dot"></div><span id="ps1Text">正在處理影片...</span></div>
           <div class="p-step" id="ps2"><div class="p-dot"></div> 正在上傳至 Gemini...</div>
-          <div class="p-step" id="ps3"><div class="p-dot"></div> AI 偵探正在分析影片...</div>
-          <div class="p-step" id="ps4"><div class="p-dot"></div> 正在生成 30 秒廣告腳本...</div>
+          <div class="p-step" id="ps3"><div class="p-dot"></div> AI 正在深度分析影片...</div>
         </div>
       </div>
-
       <div class="error-msg" id="errorMsg"></div>
     </div>
+  </div>
 
-    <!-- RESULTS -->
-    <div class="results-area" id="resultsArea">
+  <!-- ====== RESULTS VIEW (Sidebar + Content) ====== -->
+  <div id="resultsView">
 
-      <div class="product-banner" id="productBanner"></div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-title" id="sidebarTitle">影片分析</div>
 
-      <!-- Video Hook Analysis -->
-      <div class="intel-card intel-card-full" id="hookAnalysisCard" style="display:none; margin-bottom:1.5rem;">
-        <h3>影片鉤子</h3>
-        <div id="hookAnalysisText" class="intel-text"></div>
+      <ul class="video-info-list" id="videoInfoList">
+        <li><span class="info-icon">&#9654;</span><span>平台：<span class="info-value" id="infoPlatform">-</span></span></li>
+        <li><span class="info-icon">&#9733;</span><span>產品：<span class="info-value" id="infoProduct">-</span></span></li>
+        <li><span class="info-icon">&#9883;</span><span>品牌：<span class="info-value" id="infoBrand">-</span></span></li>
+        <li><span class="info-icon">&#9872;</span><span>受眾：<span class="info-value" id="infoAudience">-</span></span></li>
+        <li><span class="info-icon">&#10003;</span><span>賣點：<span class="info-value" id="infoMagic">-</span></span></li>
+      </ul>
+
+      <div class="sidebar-actions">
+        <button class="sidebar-btn" onclick="switchContentTab('analysis')">
+          <span class="sb-icon">&#128196;</span> 教學文件
+        </button>
+        <button class="sidebar-btn" onclick="switchContentTab('prompt')">
+          <span class="sb-icon">&#128221;</span> 取得 Prompt
+        </button>
+        <button class="sidebar-btn" onclick="resetAll()">
+          <span class="sb-icon">&#8634;</span> 重新開始
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+
+      <!-- Content Tabs -->
+      <div class="content-tabs">
+        <button class="content-tab active" id="ctAnalysis" onclick="switchContentTab('analysis')">教學文件</button>
+        <button class="content-tab" id="ctPrompt" onclick="switchContentTab('prompt')">取得 Prompt</button>
       </div>
 
-      <!-- Marketing Insights -->
-      <div class="intel-card intel-card-full" id="marketingCard" style="display:none; margin-bottom:1.5rem;">
-        <h3>行銷重點</h3>
-        <div id="marketingText" class="intel-text"></div>
-      </div>
+      <!-- ====== ANALYSIS PANEL ====== -->
+      <div class="content-panel visible" id="panelAnalysis">
 
-      <!-- Video Storyboard Table -->
-      <div id="storyboardSection" style="display:none; margin-bottom:1.5rem;">
-        <div class="intel-card intel-card-full">
-          <h3>分鏡設計</h3>
+        <!-- Hook Analysis -->
+        <div class="section-card" id="hookCard">
+          <h3><span class="s-icon">&#10024;</span> 影片鉤子</h3>
+          <div id="hookContent"></div>
+        </div>
+
+        <!-- Marketing Insights -->
+        <div class="section-card" id="marketingCard">
+          <h3><span class="s-icon">&#9889;</span> 行銷重點</h3>
+          <div id="marketingContent"></div>
+        </div>
+
+        <!-- Storyboard -->
+        <div class="section-card" id="storyboardCard">
+          <h3><span class="s-icon">&#127916;</span> 分鏡設計</h3>
           <div style="overflow-x:auto;">
-            <table class="final-table" id="storyboardTable">
+            <table class="sb-table" id="storyboardTable">
               <thead>
                 <tr>
                   <th>時間軸</th>
@@ -580,93 +540,127 @@
             </table>
           </div>
         </div>
-      </div>
 
-      <!-- Intelligence Details (collapsible) -->
-      <details class="intel-details" id="intelDetails" style="display:none; margin-bottom:2rem;">
-        <summary class="intel-summary">更多情報：受眾分析 / 視覺風格 / 逐字稿</summary>
-        <div class="intel-grid" style="margin-top:1rem;">
-          <div class="intel-card">
-            <h3>受眾分析</h3>
-            <div id="audienceProfile"></div>
+        <!-- More Details (collapsible) -->
+        <details class="intel-details" id="intelDetails">
+          <summary class="intel-summary">更多情報：受眾分析 / 視覺風格 / 逐字稿</summary>
+          <div class="intel-grid">
+            <div class="intel-card">
+              <h4>受眾分析</h4>
+              <div id="audienceProfile"></div>
+            </div>
+            <div class="intel-card">
+              <h4>視覺風格描述</h4>
+              <div id="visualDesc" class="s-text" style="font-size:0.84rem;line-height:1.7;color:#333;"></div>
+            </div>
+            <div class="intel-card intel-card-full">
+              <h4>影片逐字稿</h4>
+              <div id="transcriptBox" class="transcript-scroll"></div>
+            </div>
           </div>
-          <div class="intel-card">
-            <h3>視覺風格描述</h3>
-            <div id="visualDesc" class="intel-text"></div>
+        </details>
+
+        <!-- ====== PRODUCT INPUT FORM ====== -->
+        <div class="product-form" id="productForm">
+          <h3>輸入您的產品資訊</h3>
+          <p class="form-sub">描述您要推廣的產品，AI 將以上方參考影片的風格為您的產品生成廣告素材。</p>
+          <div class="form-group">
+            <label for="productName">產品名稱 *</label>
+            <input type="text" id="productName" placeholder="例如：8D 全身按摩墊" />
           </div>
-          <div class="intel-card intel-card-full">
-            <h3>影片逐字稿</h3>
-            <div id="transcriptBox" class="transcript-scroll"></div>
+          <div class="form-group">
+            <label for="productDesc">產品描述</label>
+            <textarea id="productDesc" placeholder="請簡單描述您的產品特色、功能、目標客群等..."></textarea>
+          </div>
+          <button class="btn-primary" id="generateMenuBtn" onclick="generateMenu()">生成 10/10/10 廣告選單</button>
+        </div>
+
+        <!-- Menu loader -->
+        <div class="loader" id="menuLoader">
+          <div class="spinner"></div>
+          <p>正在根據您的產品生成廣告素材...</p>
+        </div>
+
+        <!-- ====== 10/10/10 MENU ====== -->
+        <div class="menu-section" id="menuSection" style="display:none;">
+          <h2>10 / 10 / 10 廣告選單</h2>
+          <p class="menu-sub">以參考影片風格為靈感，為您的產品量身打造的全新創意。點擊選擇您喜歡的項目。</p>
+
+          <div class="menu-block">
+            <h3>影片鉤子（H1-H10）</h3>
+            <div class="option-list" id="hooksList"></div>
+          </div>
+          <div class="menu-block">
+            <h3>痛點分鏡（P1-P10）</h3>
+            <div class="option-list" id="painsList"></div>
+          </div>
+          <div class="menu-block">
+            <h3>展示分鏡（S1-S10）</h3>
+            <div class="option-list" id="showsList"></div>
+          </div>
+
+          <div class="generate-bar">
+            <div class="sel-count">
+              已選：<strong id="selH">0</strong> 鉤子、
+              <strong id="selP">0</strong> 痛點、
+              <strong id="selS">0</strong> 展示
+            </div>
+            <button class="btn-primary" id="assembleBtn" onclick="assembleScript()">組裝廣告腳本</button>
           </div>
         </div>
-      </details>
 
-      <h2 class="section-title">10 / 10 / 10 廣告選單</h2>
-      <p class="section-sub">受此影片啟發，AI 生成的全新創意積木。點擊選擇你喜歡的項目。</p>
-
-      <div class="grid-block">
-        <h3>影片鉤子（H1-H10）</h3>
-        <div class="option-list" id="hooksList"></div>
-      </div>
-
-      <div class="grid-block">
-        <h3>痛點分鏡（P1-P10）</h3>
-        <div class="option-list" id="painsList"></div>
-      </div>
-
-      <div class="grid-block">
-        <h3>展示分鏡（S1-S10）</h3>
-        <div class="option-list" id="showsList"></div>
-      </div>
-
-      <!-- Selection bar -->
-      <div class="generate-bar">
-        <div class="sel-count">
-          已選：<strong id="selH">0</strong> 鉤子、
-          <strong id="selP">0</strong> 痛點、
-          <strong id="selS">0</strong> 展示
+        <!-- Script loader -->
+        <div class="loader" id="scriptLoader">
+          <div class="spinner"></div>
+          <p>正在根據您的選擇組裝腳本...</p>
         </div>
-        <button class="btn" id="assembleBtn" onclick="assembleScript()">組裝廣告腳本</button>
+
+        <!-- ====== FINAL SCRIPT ====== -->
+        <div class="script-section" id="scriptSection" style="display:none;">
+          <h2>30 秒製作腳本</h2>
+          <p class="script-sub">根據您選擇的素材，量身打造的廣告腳本。</p>
+          <div id="durationBadge" class="duration-badge" style="display:none;"></div>
+
+          <table class="sb-table" id="finalTable">
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>畫面內容</th>
+                <th>口播內容</th>
+                <th>字卡設計</th>
+              </tr>
+            </thead>
+            <tbody id="finalBody"></tbody>
+          </table>
+
+          <div class="btn-bar">
+            <button class="btn-outline" onclick="resetAll()">重新開始</button>
+            <button class="btn-primary" style="flex:1;" onclick="copyTable()">複製腳本到剪貼簿</button>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Script loader -->
-      <div class="script-loader" id="scriptLoader">
-        <div class="spinner"></div>
-        <p>正在根據您的選擇組裝腳本...</p>
-      </div>
-
-      <!-- Script result (hidden until generated) -->
-      <div class="script-section" id="scriptSection" style="display:none;">
-        <h2 class="section-title">30 秒製作腳本</h2>
-        <p class="section-sub">根據您選擇的素材，量身打造的廣告腳本。</p>
-
-        <div id="durationBadge" class="duration-badge" style="display:none;"></div>
-
-        <table class="final-table" id="finalTable">
-          <thead>
-            <tr>
-              <th>時間</th>
-              <th>畫面內容</th>
-              <th>口播內容</th>
-              <th>字卡設計</th>
-            </tr>
-          </thead>
-          <tbody id="finalBody"></tbody>
-        </table>
-
-        <div class="btn-bar">
-          <button class="btn-outline" onclick="resetAll()">重新開始</button>
-          <button class="btn btn-copy" onclick="copyTable()">複製腳本到剪貼簿</button>
+      <!-- ====== PROMPT EXPORT PANEL ====== -->
+      <div class="content-panel" id="panelPrompt">
+        <div class="prompt-export">
+          <h3>匯出 Prompt</h3>
+          <p class="pe-sub">以下 Prompt 包含參考影片的完整分析，您可以複製到 ChatGPT 或其他 AI 工具中使用。請在「產品＆服務文件」中填入您的產品資訊。</p>
+          <textarea class="prompt-textarea" id="promptTextarea" readonly></textarea>
+          <div class="btn-bar" style="margin-top:0.75rem;">
+            <button class="btn-primary" onclick="copyPrompt()">複製 Prompt</button>
+          </div>
         </div>
       </div>
 
     </div>
-
   </div>
 
 <script>
   let selectedFile = null;
+  let analysisData = null;
   let menuData = null;
+  let videoInfo = { title: '', platform: '', url: '' };
   let selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
 
   // ── Tab switching ──
@@ -682,6 +676,19 @@
     }
   }
 
+  function switchContentTab(tab) {
+    document.querySelectorAll('.content-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('visible'));
+    if (tab === 'prompt') {
+      document.getElementById('ctPrompt').classList.add('active');
+      document.getElementById('panelPrompt').classList.add('visible');
+      generateExportPrompt();
+    } else {
+      document.getElementById('ctAnalysis').classList.add('active');
+      document.getElementById('panelAnalysis').classList.add('visible');
+    }
+  }
+
   // ── File upload handling ──
   const fileInput = document.getElementById('fileInput');
   const uploadZone = document.getElementById('uploadZone');
@@ -690,17 +697,10 @@
     const file = e.target.files[0];
     if (file) selectFile(file);
   });
-
-  uploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadZone.classList.add('dragover');
-  });
-  uploadZone.addEventListener('dragleave', () => {
-    uploadZone.classList.remove('dragover');
-  });
+  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
   uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
+    e.preventDefault(); uploadZone.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
     if (file && file.type === 'video/mp4') selectFile(file);
     else showError('請上傳 MP4 格式的影片檔案。');
@@ -709,8 +709,7 @@
   function selectFile(file) {
     selectedFile = file;
     const nameEl = document.getElementById('fileName');
-    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-    nameEl.textContent = `已選擇：${file.name}（${sizeMB} MB）`;
+    nameEl.textContent = `已選擇：${file.name}（${(file.size / 1024 / 1024).toFixed(1)} MB）`;
     nameEl.classList.add('visible');
     document.getElementById('uploadBtn').disabled = false;
   }
@@ -722,8 +721,18 @@
     return d.innerHTML;
   }
 
+  function formatBullets(text) {
+    if (!text) return '';
+    return text.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      return `<div style="margin-bottom:0.15rem;">${escHtml(trimmed)}</div>`;
+    }).join('');
+  }
+
   function setStepState(stepNum, state) {
     const el = document.getElementById('ps' + stepNum);
+    if (!el) return;
     el.classList.remove('active', 'done', 'error');
     if (state) el.classList.add(state);
   }
@@ -736,10 +745,9 @@
 
   function startProgress(step1Text) {
     document.getElementById('errorMsg').classList.remove('visible');
-    document.getElementById('resultsArea').classList.remove('visible');
     document.getElementById('progressArea').classList.add('visible');
     document.getElementById('ps1Text').textContent = step1Text;
-    for (let i = 1; i <= 4; i++) setStepState(i, '');
+    for (let i = 1; i <= 3; i++) setStepState(i, '');
     setStepState(1, 'active');
   }
 
@@ -767,17 +775,15 @@
 
     startProgress('正在上傳影片至 Gemini...');
     document.getElementById('uploadBtn').disabled = true;
+    videoInfo = { title: selectedFile.name.replace('.mp4', ''), platform: '上傳', url: '' };
 
     try {
-      // Step 1: Get API key
       const configRes = await fetch('/api/upload-config');
       const { apiKey } = await configRes.json();
 
-      // Step 2: Upload directly to Gemini File API from browser
       setStepState(1, 'active');
       const geminiUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`;
 
-      // Start resumable upload
       const startRes = await fetch(geminiUrl, {
         method: 'POST',
         headers: {
@@ -793,7 +799,6 @@
       const uploadUrl = startRes.headers.get('X-Goog-Upload-URL');
       if (!uploadUrl) throw new Error('無法取得上傳網址');
 
-      // Upload the file
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
@@ -809,22 +814,18 @@
       const fileName = uploadData.file?.name;
       if (!fileUri) throw new Error('上傳失敗，未取得檔案 URI');
 
-      // Step 3: Poll until file is ACTIVE
       setStepState(1, 'done');
       setStepState(2, 'active');
       let fileState = uploadData.file?.state;
       while (fileState === 'PROCESSING') {
         await new Promise(r => setTimeout(r, 3000));
-        const checkRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`
-        );
+        const checkRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${apiKey}`);
         const checkData = await checkRes.json();
         fileState = checkData.state;
       }
 
       if (fileState === 'FAILED') throw new Error('Gemini 檔案處理失敗');
 
-      // Step 4: Send file reference to our server for analysis
       setStepState(2, 'done');
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -839,7 +840,7 @@
     }
   }
 
-  // ── SSE handler (shared) ──
+  // ── SSE handler ──
   async function handleSSE(response) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -865,65 +866,71 @@
             for (let i = 1; i < step; i++) setStepState(i, 'done');
             setStepState(step, 'active');
           }
-          else if (eventType === 'menu') {
+          else if (eventType === 'videoInfo') {
+            videoInfo = payload;
+          }
+          else if (eventType === 'analysis') {
             for (let i = 1; i <= 3; i++) setStepState(i, 'done');
-            menuData = payload;
-            renderMenu(payload);
-            document.getElementById('resultsArea').classList.add('visible');
-            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
+            analysisData = payload;
+            if (payload.video_title && !videoInfo.title) {
+              videoInfo.title = payload.video_title;
+            }
+            showResults(payload);
           }
           else if (eventType === 'error') {
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 1; i <= 3; i++) {
               const el = document.getElementById('ps' + i);
-              if (el.classList.contains('active')) setStepState(i, 'error');
+              if (el && el.classList.contains('active')) setStepState(i, 'error');
             }
             showError(payload.message || '發生錯誤');
-          }
-          else if (eventType === 'done') {
-            // analysis done
           }
         }
       }
     }
   }
 
-  // ── Render ──
-  function renderMenu(data) {
-    // Product banner
-    const banner = document.getElementById('productBanner');
-    banner.innerHTML = [
-      { label: '產品名稱', value: data.product_name },
-      { label: '品牌', value: data.brand },
-      { label: '核心賣點', value: data.magic_moment },
-      { label: '利基市場', value: data.niche },
-    ].map(f => `
-      <div class="product-field">
-        <div class="label">${escHtml(f.label)}</div>
-        <div class="value">${escHtml(f.value || '無')}</div>
-      </div>
-    `).join('');
+  // ── Show results ──
+  function showResults(data) {
+    // Switch to results view
+    document.getElementById('inputView').style.display = 'none';
+    document.getElementById('resultsView').classList.add('visible');
 
-    // Video Hook Analysis
-    if (data.video_hook_analysis) {
-      const card = document.getElementById('hookAnalysisCard');
-      card.style.display = 'block';
-      document.getElementById('hookAnalysisText').textContent = data.video_hook_analysis;
+    // Sidebar info
+    document.getElementById('sidebarTitle').textContent = videoInfo.title || data.video_title || '影片分析';
+    document.getElementById('infoPlatform').textContent = videoInfo.platform || '未知';
+    document.getElementById('infoProduct').textContent = data.product_name || '未知';
+    document.getElementById('infoBrand').textContent = data.brand || '未知';
+    document.getElementById('infoAudience').textContent = data.target_audience || '未知';
+    document.getElementById('infoMagic').textContent = data.magic_moment || '未知';
+
+    // Hook sections
+    const hookContent = document.getElementById('hookContent');
+    if (Array.isArray(data.hook_sections) && data.hook_sections.length > 0) {
+      hookContent.innerHTML = data.hook_sections.map((s, i) => `
+        <h4>${i + 1}. ${escHtml(s.title)}</h4>
+        <p class="s-text">${escHtml(s.content)}</p>
+      `).join('');
+    } else if (data.video_hook_analysis) {
+      hookContent.innerHTML = `<p class="s-text">${escHtml(data.video_hook_analysis)}</p>`;
     }
 
-    // Marketing Insights
-    if (data.marketing_insights) {
-      const card = document.getElementById('marketingCard');
-      card.style.display = 'block';
-      document.getElementById('marketingText').textContent = data.marketing_insights;
+    // Marketing sections
+    const mktContent = document.getElementById('marketingContent');
+    if (Array.isArray(data.marketing_sections) && data.marketing_sections.length > 0) {
+      mktContent.innerHTML = data.marketing_sections.map((s, i) => `
+        <h4>${i + 1}. ${escHtml(s.title)}</h4>
+        <p class="s-text">${escHtml(s.content)}</p>
+      `).join('');
+    } else if (data.marketing_insights) {
+      mktContent.innerHTML = `<p class="s-text">${escHtml(data.marketing_insights)}</p>`;
     }
 
-    // Storyboard Table
+    // Storyboard
     if (Array.isArray(data.storyboard) && data.storyboard.length > 0) {
-      document.getElementById('storyboardSection').style.display = 'block';
       document.getElementById('storyboardBody').innerHTML = data.storyboard.map(s => `
         <tr>
           <td>${escHtml(s.time || '')}</td>
-          <td>${escHtml(s.visual || '')}</td>
+          <td>${formatBullets(s.visual || '')}</td>
           <td>${escHtml(s.voiceover || '')}</td>
           <td>${escHtml(s.text_overlay || '')}</td>
           <td>${escHtml(s.scene_label || '')}</td>
@@ -931,9 +938,7 @@
       `).join('');
     }
 
-    // Intel Details (collapsible)
-    document.getElementById('intelDetails').style.display = 'block';
-
+    // Audience details
     document.getElementById('audienceProfile').innerHTML = [
       { label: '目標受眾', value: data.target_audience },
       { label: '年齡範圍', value: data.age_range },
@@ -949,6 +954,7 @@
 
     document.getElementById('visualDesc').textContent = data.visual_description || '無';
 
+    // Transcript
     const transcriptBox = document.getElementById('transcriptBox');
     if (Array.isArray(data.transcript) && data.transcript.length > 0) {
       transcriptBox.innerHTML = data.transcript.map(t => `
@@ -958,10 +964,80 @@
         </div>
       `).join('');
     } else {
-      transcriptBox.innerHTML = '<div style="color:var(--text2)">無法提取逐字稿</div>';
+      transcriptBox.innerHTML = '<div style="color:#888;">無法提取逐字稿</div>';
     }
+  }
 
-    // 10/10/10 cards
+  // ── Generate 10/10/10 Menu ──
+  async function generateMenu() {
+    const productName = document.getElementById('productName').value.trim();
+    if (!productName) { alert('請輸入產品名稱'); return; }
+
+    const productDesc = document.getElementById('productDesc').value.trim();
+
+    document.getElementById('generateMenuBtn').disabled = true;
+    document.getElementById('menuLoader').classList.add('visible');
+    document.getElementById('menuSection').style.display = 'none';
+
+    const body = {
+      productName,
+      productDesc,
+      videoTitle: videoInfo.title || analysisData?.video_title || '',
+      refProductName: analysisData?.product_name || '',
+      refBrand: analysisData?.brand || '',
+      refTargetAudience: analysisData?.target_audience || '',
+      refMagicMoment: analysisData?.magic_moment || '',
+      hookSections: analysisData?.hook_sections || [],
+      marketingSections: analysisData?.marketing_sections || [],
+    };
+
+    try {
+      const res = await fetch('/api/generate-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      await handleMenuSSE(res);
+    } catch (err) {
+      alert('生成失敗：' + err.message);
+    } finally {
+      document.getElementById('generateMenuBtn').disabled = false;
+      document.getElementById('menuLoader').classList.remove('visible');
+    }
+  }
+
+  async function handleMenuSSE(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const payload = JSON.parse(line.slice(6));
+          if (eventType === 'menu') {
+            menuData = payload;
+            renderMenu(payload);
+            document.getElementById('menuSection').style.display = 'block';
+            document.getElementById('menuSection').scrollIntoView({ behavior: 'smooth' });
+          } else if (eventType === 'error') {
+            alert(payload.message || '生成失敗');
+          }
+        }
+      }
+    }
+  }
+
+  function renderMenu(data) {
     selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
     renderCards('hooksList', data.hooks || [], 'hooks');
     renderCards('painsList', data.pains || [], 'pains');
@@ -997,10 +1073,10 @@
     document.getElementById('selS').textContent = selections.shows.size;
   }
 
-  // ── Assemble script from user selections ──
+  // ── Assemble script ──
   async function assembleScript() {
     const total = selections.hooks.size + selections.pains.size + selections.shows.size;
-    if (total === 0) { showError('請至少選擇一個項目。'); return; }
+    if (total === 0) { alert('請至少選擇一個項目。'); return; }
 
     document.getElementById('scriptSection').style.display = 'none';
     document.getElementById('scriptLoader').classList.add('visible');
@@ -1010,10 +1086,10 @@
       hooks: [...selections.hooks].map(i => menuData.hooks[i]),
       pains: [...selections.pains].map(i => menuData.pains[i]),
       shows: [...selections.shows].map(i => menuData.shows[i]),
-      productName: menuData.product_name,
-      brand: menuData.brand,
-      targetAudience: menuData.target_audience,
-      magicMoment: menuData.magic_moment,
+      productName: document.getElementById('productName').value.trim() || analysisData?.product_name || '',
+      productDesc: document.getElementById('productDesc').value.trim() || '',
+      targetAudience: analysisData?.target_audience || '',
+      magicMoment: analysisData?.magic_moment || '',
     };
 
     try {
@@ -1024,7 +1100,7 @@
       });
       await handleAssembleSSE(res);
     } catch (err) {
-      showError(err.message);
+      alert('腳本生成失敗：' + err.message);
     } finally {
       document.getElementById('scriptLoader').classList.remove('visible');
       document.getElementById('assembleBtn').disabled = false;
@@ -1054,7 +1130,7 @@
             document.getElementById('scriptSection').style.display = 'block';
             document.getElementById('scriptSection').scrollIntoView({ behavior: 'smooth' });
           } else if (eventType === 'error') {
-            showError(payload.message || '發生錯誤');
+            alert(payload.message || '發生錯誤');
           }
         }
       }
@@ -1067,15 +1143,129 @@
       badge.textContent = '總長度：' + data.total_duration;
       badge.style.display = 'inline-block';
     }
-    const tbody = document.getElementById('finalBody');
-    tbody.innerHTML = (data.script || []).map(row => `
+    document.getElementById('finalBody').innerHTML = (data.script || []).map(row => `
       <tr>
         <td>${escHtml(row.time)}</td>
-        <td>${escHtml(row.visual)}</td>
+        <td>${formatBullets(row.visual || '')}</td>
         <td>${escHtml(row.voiceover)}</td>
         <td>${escHtml(row.text_overlay)}</td>
       </tr>
     `).join('');
+  }
+
+  // ── Export Prompt ──
+  function generateExportPrompt() {
+    if (!analysisData) return;
+    const d = analysisData;
+    const pName = document.getElementById('productName').value.trim();
+    const pDesc = document.getElementById('productDesc').value.trim();
+
+    let prompt = `# 產品＆服務文件
+
+### 產品＆服務名稱
+
+${pName || '( ... 請撰寫產品＆服務名稱 ... )'}
+
+### 介紹
+
+${pDesc || '( ..... 請將產品＆服務介紹貼在這裡 .... )'}
+
+# 任務
+
+1. 請幫我產出10個「不同的-影片鉤子 Hooks 分鏡」跟 10個「不同的-痛點分鏡」跟10個「不同的-展示分鏡」讓我做選擇
+2. 輸出格式請參考「分鏡輸出格式」請嚴格遵守
+3. 請不要輸出「頭尾招呼語」直接輸出結果即可（千萬不要輸出不相干的對話感的東西）請參考輸出範例如下:
+
+### 影片鉤子 Hooks
+
+( 表格 .... 10 個範例 )
+
+### 痛點分鏡
+
+( 表格 .... 10 個範例 )
+
+### 展示分鏡
+
+( 表格 .... 10 個範例 )
+
+
+## 分鏡輸出格式
+
+- 每一個分鏡包含：畫面內容、口播內容、字卡設計三個元素
+- 請輸出表格形式，欄位為：上述的「畫面內容、口播內容、字卡設計」
+
+## 影片鉤子 Hooks 分鏡
+
+前三秒吸睛的影片 hook 設計，請參考「參考影片的風格」去寫「產品＆服務文件」裡面的商品適合的 hook
+
+## 痛點分鏡
+
+關於商品的痛點渲染與情境，請參考「參考影片的風格」去寫「產品＆服務文件」裡面的痛點
+
+## 展示分鏡
+
+關於商品的展示、使用過程解決、服務的過程等等，請參考「參考影片的風格」去寫「產品＆服務文件」裡面的商品功能去撰寫
+
+# 參考影片
+
+## 影片標題
+
+${videoInfo.title || d.video_title || '未知'}
+
+## 影片平台
+
+${videoInfo.platform || '未知'}
+`;
+
+    // Transcript
+    if (Array.isArray(d.transcript) && d.transcript.length > 0) {
+      prompt += `\n## 逐字稿\n\n`;
+      d.transcript.forEach(t => {
+        prompt += `${t.time} ${t.text}\n`;
+      });
+    }
+
+    // Hook sections
+    if (Array.isArray(d.hook_sections) && d.hook_sections.length > 0) {
+      prompt += `\n## 影片鉤子 hooks\n`;
+      d.hook_sections.forEach((s, i) => {
+        prompt += `\n### ${i + 1}. ${s.title}\n${s.content}\n`;
+      });
+    }
+
+    // Marketing sections
+    if (Array.isArray(d.marketing_sections) && d.marketing_sections.length > 0) {
+      prompt += `\n## 影片重點\n`;
+      d.marketing_sections.forEach((s, i) => {
+        prompt += `\n### ${s.title}\n${s.content}\n`;
+      });
+    }
+
+    // Storyboard
+    if (Array.isArray(d.storyboard) && d.storyboard.length > 0) {
+      prompt += `\n## 分鏡腳本\n`;
+      d.storyboard.forEach(s => {
+        prompt += `\n### 時間線: ${s.time}\n`;
+        prompt += `\n#### 畫面內容:\n\n${(s.visual || '').replace(/\\n/g, '\n')}\n`;
+        prompt += `\n#### 口播內容:\n\n${s.voiceover || ''}\n`;
+        prompt += `\n#### 字卡:\n\n${s.text_overlay || ''}\n`;
+        if (s.scene_label) {
+          prompt += `\n#### 精彩分鏡: ${s.scene_label}\n`;
+        }
+      });
+    }
+
+    document.getElementById('promptTextarea').value = prompt;
+  }
+
+  function copyPrompt() {
+    const textarea = document.getElementById('promptTextarea');
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      const btn = event.target;
+      const orig = btn.textContent;
+      btn.textContent = '已複製！';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
   }
 
   function copyTable() {
@@ -1085,7 +1275,7 @@
       [...r.querySelectorAll('th, td')].map(c => c.textContent.trim()).join('\t')
     ).join('\n');
     navigator.clipboard.writeText(text).then(() => {
-      const btn = document.querySelector('.btn-copy');
+      const btn = document.querySelector('.script-section .btn-primary');
       const orig = btn.textContent;
       btn.textContent = '已複製！';
       setTimeout(() => btn.textContent = orig, 1500);
@@ -1093,27 +1283,31 @@
   }
 
   function resetAll() {
+    document.getElementById('inputView').style.display = '';
+    document.getElementById('resultsView').classList.remove('visible');
     document.getElementById('videoUrl').value = '';
     document.getElementById('progressArea').classList.remove('visible');
-    document.getElementById('resultsArea').classList.remove('visible');
     document.getElementById('errorMsg').classList.remove('visible');
     document.getElementById('fileName').classList.remove('visible');
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('menuSection').style.display = 'none';
     document.getElementById('scriptSection').style.display = 'none';
     document.getElementById('scriptLoader').classList.remove('visible');
-    document.getElementById('hookAnalysisCard').style.display = 'none';
-    document.getElementById('marketingCard').style.display = 'none';
-    document.getElementById('storyboardSection').style.display = 'none';
-    document.getElementById('intelDetails').style.display = 'none';
-    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('menuLoader').classList.remove('visible');
+    document.getElementById('productName').value = '';
+    document.getElementById('productDesc').value = '';
     selectedFile = null;
+    analysisData = null;
     menuData = null;
+    videoInfo = { title: '', platform: '', url: '' };
     selections = { hooks: new Set(), pains: new Set(), shows: new Set() };
     fileInput.value = '';
-    for (let i = 1; i <= 4; i++) setStepState(i, '');
+    for (let i = 1; i <= 3; i++) setStepState(i, '');
+    switchContentTab('analysis');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Enter key on URL input
+  // Enter key
   document.getElementById('videoUrl').addEventListener('keydown', e => {
     if (e.key === 'Enter') generateFromUrl();
   });

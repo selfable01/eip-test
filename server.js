@@ -28,7 +28,7 @@ if (!IS_VERCEL && !fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-2.0-flash';
 
 // ── yt-dlp binary management ──
 
@@ -181,7 +181,7 @@ function sseHeaders(res) {
 // ── Prompts ──
 
 // Use shared functions from lib/pipeline.js
-const { runAnalysis: runSharedAnalysis, runAssemble: runSharedAssemble } = require('./lib/pipeline');
+const { runAnalysis: runSharedAnalysis, runAssemble: runSharedAssemble, runGenerateMenu: runSharedGenerateMenu, detectPlatform, getVideoTitle } = require('./lib/pipeline');
 
 // ── CORS ──
 app.use((req, res, next) => {
@@ -206,8 +206,17 @@ app.get('/api/generate', async (req, res) => {
   try {
     sse(res, 'status', { step: 1, message: '正在準備下載工具...' });
     await ensureYtdlp();
+
+    // Get video title in parallel with download
+    const platform = detectPlatform(videoUrl);
+    const titlePromise = getVideoTitle(videoUrl, getYtdlpPath());
+
     sse(res, 'status', { step: 1, message: '正在下載影片（480p）...' });
     localFilePath = await downloadVideo(videoUrl);
+
+    const videoTitle = await titlePromise;
+    sse(res, 'videoInfo', { title: videoTitle, platform, url: videoUrl });
+
     sse(res, 'status', { step: 2, message: '正在上傳至 Gemini...' });
     const geminiFile = await uploadToGemini(localFilePath);
     await runSharedAnalysis(res, geminiFile);
@@ -242,7 +251,25 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
-// ── Route 4: Assemble script from user selections ──
+// ── Route 4: Generate 10/10/10 menu from user's product + reference ──
+
+app.post('/api/generate-menu', async (req, res) => {
+  const body = req.body;
+  if (!body || !body.productName) {
+    return res.status(400).json({ error: '請提供產品名稱' });
+  }
+
+  sseHeaders(res);
+  try {
+    await runSharedGenerateMenu(res, body);
+  } catch (err) {
+    sse(res, 'error', { message: '生成失敗。', detail: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── Route 5: Assemble script from user selections ──
 
 app.post('/api/assemble', async (req, res) => {
   const body = req.body;
