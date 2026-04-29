@@ -1,4 +1,4 @@
-# 3Zebra Timed Context Engine
+# Timed Context Engine
 
 A video analysis tool that downloads YouTube videos, uploads them to Google Gemini, and generates AI-powered breakdowns including hook, pain point, and show structure analysis.
 

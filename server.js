@@ -268,7 +268,7 @@ app.get('/', (req, res) => {
 // Local dev
 if (!IS_VERCEL) {
   app.listen(PORT, () => {
-    console.log(`3ZeBra Auto-Mirror running at http://localhost:${PORT}`);
+    console.log(`Auto-Mirror running at http://localhost:${PORT}`);
   });
 }
 
